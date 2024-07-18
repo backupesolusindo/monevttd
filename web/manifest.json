@@ -1,6 +1,6 @@
 {
-    "name": "isi_piringku",
-    "short_name": "isi_piringku",
+    "name": "monitoringobat",
+    "short_name": "monitoringobat",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

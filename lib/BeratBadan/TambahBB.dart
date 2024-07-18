@@ -3,10 +3,10 @@ import 'package:fluttertoast/fluttertoast.dart';
 import 'package:get/get.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
-import 'package:isi_piringku/bloc/nav/bottom_nav.dart';
-import 'package:isi_piringku/kalori/kalori.dart';
-import 'package:isi_piringku/model/user.dart';
-import 'package:isi_piringku/util/colors.dart';
+import 'package:monitoringobat/bloc/nav/bottom_nav.dart';
+import 'package:monitoringobat/kalori/kalori.dart';
+import 'package:monitoringobat/model/user.dart';
+import 'package:monitoringobat/util/colors.dart';
 import 'package:modal_bottom_sheet/modal_bottom_sheet.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -24,6 +24,7 @@ class _TambahBBState extends State<TambahBB> {
   List<Map<String, dynamic>> selectedFoods = [];
 
   TextEditingController beratbadanController = TextEditingController();
+  TextEditingController hbController = TextEditingController();
   List<Map<String, dynamic>> filteredFoodData = [];
   String clientId = "PKL2023";
   String clientSecret = "PKLSERU";
@@ -95,6 +96,7 @@ class _TambahBBState extends State<TambahBB> {
         body: jsonEncode({
           'id_user': Id,
           'beratbadan': beratbadanController.text,
+          'hb': hbController.text,
         }),
       );
 
@@ -124,14 +126,6 @@ class _TambahBBState extends State<TambahBB> {
         title: Text('Tambah Berat Badan'),
         backgroundColor: SecondaryColor,
       ),
-      // floatingActionButton: FloatingActionButton(
-      //   tooltip: "Tambah Kalori",
-      //   onPressed: () {
-      //     kirimData();
-      //   },
-      //   child: Icon(Icons.save),
-      //   backgroundColor: SecondaryColor,
-      // ),
       body: SingleChildScrollView(
         child: Stack(children: [
           SafeArea(
@@ -171,6 +165,25 @@ class _TambahBBState extends State<TambahBB> {
                             ),
                           ),
                           SizedBox(
+                            height: 8,
+                          ),
+                          Container(
+                            padding: EdgeInsets.only(left: 20, right: 20),
+                            child: TextFormField(
+                              controller: hbController,
+                              keyboardType: TextInputType.number,
+                              maxLength: 3,
+                              decoration: InputDecoration(
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                prefixIcon: Icon(Icons.bloodtype),
+                                suffixText: "g/dL",
+                                hintText: "HB Kamu ...",
+                              ),
+                            ),
+                          ),
+                          SizedBox(
                             height: 20,
                           ),
                           GestureDetector(
@@ -179,6 +192,8 @@ class _TambahBBState extends State<TambahBB> {
                             },
                             child: Container(
                               width: 120,
+                              margin: EdgeInsets.symmetric(
+                                  vertical: 8, horizontal: 24),
                               padding: EdgeInsets.all(16),
                               decoration: BoxDecoration(
                                 color: SecondaryColor,

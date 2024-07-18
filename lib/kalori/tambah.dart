@@ -3,10 +3,10 @@ import 'package:fluttertoast/fluttertoast.dart';
 import 'package:get/get.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
-import 'package:isi_piringku/bloc/nav/bottom_nav.dart';
-import 'package:isi_piringku/kalori/kalori.dart';
-import 'package:isi_piringku/model/user.dart';
-import 'package:isi_piringku/util/colors.dart';
+import 'package:monitoringobat/bloc/nav/bottom_nav.dart';
+import 'package:monitoringobat/kalori/kalori.dart';
+import 'package:monitoringobat/model/user.dart';
+import 'package:monitoringobat/util/colors.dart';
 import 'package:modal_bottom_sheet/modal_bottom_sheet.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 

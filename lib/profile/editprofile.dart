@@ -4,8 +4,8 @@ import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
-import 'package:isi_piringku/bloc/nav/bottom_nav.dart';
-import 'package:isi_piringku/model/user.dart';
+import 'package:monitoringobat/bloc/nav/bottom_nav.dart';
+import 'package:monitoringobat/model/user.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../util/core.dart';

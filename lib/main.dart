@@ -1,23 +1,24 @@
 import 'package:firebase_core/firebase_core.dart';
-import 'package:isi_piringku/Auth/firebase.dart';
-import 'package:isi_piringku/BeratBadan/BeratBadan.dart';
-import 'package:isi_piringku/Login/login_screen.dart';
-import 'package:isi_piringku/bloc/nav/nav_bloc.dart';
-import 'package:isi_piringku/dashboard/dashboard.dart';
-import 'package:isi_piringku/kalori/kalori.dart';
+import 'package:intl/date_symbol_data_local.dart';
+import 'package:monitoringobat/Auth/firebase.dart';
+import 'package:monitoringobat/BeratBadan/BeratBadan.dart';
+import 'package:monitoringobat/Login/login_screen.dart';
+import 'package:monitoringobat/bloc/nav/nav_bloc.dart';
+import 'package:monitoringobat/dashboard/dashboard.dart';
+import 'package:monitoringobat/kalori/kalori.dart';
 
-import 'package:isi_piringku/model/provider.dart';
+import 'package:monitoringobat/model/provider.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get/get.dart';
-import 'package:isi_piringku/tambahDarah/tambahDarah.dart';
-import 'package:isi_piringku/util/colors.dart';
+import 'package:monitoringobat/tambahDarah/tambahDarah.dart';
+import 'package:monitoringobat/util/colors.dart';
 
 import 'package:page_transition/page_transition.dart';
 
-import 'package:isi_piringku/profile/profile.dart';
-import 'package:isi_piringku/riwayat/riwayat.dart';
+import 'package:monitoringobat/profile/profile.dart';
+import 'package:monitoringobat/riwayat/riwayat.dart';
 import 'package:provider/provider.dart';
 
 void main() async {
@@ -29,18 +30,21 @@ void main() async {
   // }
 
   // await FirebaseApi().initNotification();
-
-  runApp(
-    MultiProvider(
-      // Use MultiProvider to combine multiple providers
-      providers: [
-        ChangeNotifierProvider(
-            create: (context) => UserProvider()), // Your ChangeNotifierProvider
-        BlocProvider(create: (context) => NavBloc()), // Your BlocProvider
-      ],
-      child: const MyApp(),
-    ),
-  );
+  WidgetsFlutterBinding.ensureInitialized();
+  await initializeDateFormatting('id_ID', null).then((_) {
+    runApp(
+      MultiProvider(
+        // Use MultiProvider to combine multiple providers
+        providers: [
+          ChangeNotifierProvider(
+              create: (context) =>
+                  UserProvider()), // Your ChangeNotifierProvider
+          BlocProvider(create: (context) => NavBloc()), // Your BlocProvider
+        ],
+        child: const MyApp(),
+      ),
+    );
+  });
 
   // AwesomeNotifications().initialize(
   //   'resource://drawable/app_icon', // Ganti dengan ikon aplikasi Anda

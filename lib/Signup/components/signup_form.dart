@@ -18,7 +18,7 @@ class SignUpForm extends StatefulWidget {
 }
 
 class _SignUpFormState extends State<SignUpForm> {
-  String selectedGender = 'Laki-Laki'; // Default jenis kelamin
+  String selectedGender = 'Perempuan'; // Default jenis kelamin
   DateTime selectedDate = DateTime.now(); // Default tanggal lahir
 
   String? _validateNotEmpty(String? value) {
@@ -256,7 +256,7 @@ class _SignUpFormState extends State<SignUpForm> {
                               selectedGender = value!;
                             });
                           },
-                          items: ['Laki-Laki', 'Perempuan'].map((String value) {
+                          items: ['Perempuan', 'Laki-Laki'].map((String value) {
                             return DropdownMenuItem<String>(
                               value: value,
                               child: Text(value),

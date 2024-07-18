@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:isi_piringku/components/constants.dart';
-import 'package:isi_piringku/components/responsive.dart';
+import 'package:monitoringobat/components/constants.dart';
+import 'package:monitoringobat/components/responsive.dart';
 
 import '../../components/background.dart';
 import 'components/sign_up_top_image.dart';

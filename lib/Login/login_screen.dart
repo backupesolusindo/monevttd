@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'package:isi_piringku/components/responsive.dart';
+import 'package:monitoringobat/components/responsive.dart';
 import '../../components/background.dart';
 import 'components/login_form.dart';
 import 'components/login_screen_top_image.dart';
@@ -38,7 +38,7 @@ class LoginScreen extends StatelessWidget {
             ),
             decoration: BoxDecoration(
                 image: DecorationImage(
-              image: AssetImage("assets/images/bg_login.png"),
+              image: AssetImage("assets/images/bgmonevminumobat.jpg"),
               fit: BoxFit.cover,
             ))));
   }

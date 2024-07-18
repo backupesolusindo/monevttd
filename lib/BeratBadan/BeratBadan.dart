@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:isi_piringku/util/colors.dart';
+import 'package:monitoringobat/util/colors.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 
@@ -22,6 +22,10 @@ class BeratBadan extends StatefulWidget {
 
 class _BeratBadanState extends State<BeratBadan> {
   List<Color> gradientColors = [
+    SecondaryColor,
+    AccentColor,
+  ];
+  List<Color> gradientColorsHB = [
     SecondaryColor,
     PrimaryColor,
   ];
@@ -46,6 +50,7 @@ class _BeratBadanState extends State<BeratBadan> {
   }
 
   List<FlSpot> arBeratBadan = [];
+  List<FlSpot> arHb = [];
   List LabelData = [];
 
   Future<void> fetchData() async {
@@ -65,9 +70,9 @@ class _BeratBadanState extends State<BeratBadan> {
       Uri.parse(fetkal),
     );
 
-    print("Response BeratBedan:");
-    print(fetkal);
-    print(response.body);
+    // print("Response BeratBedan:");
+    // print(fetkal);
+    // print(response.body);
 
     if (response.statusCode == 200) {
       final jsonResponse = json.decode(response.body);
@@ -75,17 +80,13 @@ class _BeratBadanState extends State<BeratBadan> {
         var data = jsonResponse['response']['dataGraf'];
         LabelData = jsonResponse['response']['dataLabel'];
         for (var i = 0; i < data.length; i++) {
-          arBeratBadan.add(FlSpot(i.toDouble(), double.parse(data[i]['bb'])));
+          if (data[i]['bb'] > 0) {
+            arBeratBadan.add(FlSpot(i.toDouble(), double.parse(data[i]['bb'])));
+          }
+          if (data[i]['hb'] > 0) {
+            arHb.add(FlSpot(i.toDouble(), double.parse(data[i]['hb'])));
+          }
         }
-        // arBeratBadan = [
-        //   FlSpot(0, 3),
-        //   FlSpot(1, 2),
-        //   FlSpot(2, 5),
-        //   FlSpot(3, 3.1),
-        //   FlSpot(4, 4),
-        //   FlSpot(5, 3),
-        //   FlSpot(6, 4),
-        // ];
       });
     } else {
       throw Exception('Failed to load data');
@@ -135,7 +136,7 @@ class _BeratBadanState extends State<BeratBadan> {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          'BERAT BADAN',
+          'BERAT BADAN & HB',
           style: TextStyle(
             color: TextColordark,
             fontSize: 32,
@@ -152,14 +153,13 @@ class _BeratBadanState extends State<BeratBadan> {
               SizedBox(
                 height: 16,
               ),
-              Text("Grafik Berat Badan",
+              Text("Grafik Berat Badan dan HB Anda",
                   style: TextStyle(
                     color: TextColordark,
-                    fontSize: 20,
+                    fontSize: 14,
                     fontWeight: FontWeight.bold,
                   )),
               Container(
-                  margin: EdgeInsets.only(top: 16),
                   padding: EdgeInsets.only(top: 8),
                   decoration: BoxDecoration(
                     color: Colors.white,
@@ -180,7 +180,7 @@ class _BeratBadanState extends State<BeratBadan> {
                               children: [
                                 Text(
                                     "Start Date: ${DateFormat('yyyy-MM-dd').format(startDate)}"),
-                                ElevatedButton(
+                                TextButton(
                                   onPressed: () => _selectStartDate(context),
                                   child: Text("Select Start Date",
                                       style: TextStyle(color: PrimaryColor)),
@@ -202,13 +202,35 @@ class _BeratBadanState extends State<BeratBadan> {
                           ],
                         ),
                       ),
+                      Text("Grafik Berat Badan Anda",
+                          style: TextStyle(
+                            color: TextColordark,
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                          )),
                       AspectRatio(
-                        aspectRatio: 1.5,
+                        aspectRatio: 2.1,
                         child: Padding(
                           padding: EdgeInsets.only(
                               left: 0, right: 24, top: 16, bottom: 8),
                           child: LineChart(
                             mainData(),
+                          ),
+                        ),
+                      ),
+                      Text("Grafik HB Anda",
+                          style: TextStyle(
+                            color: TextColordark,
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                          )),
+                      AspectRatio(
+                        aspectRatio: 2.5,
+                        child: Padding(
+                          padding: EdgeInsets.only(
+                              left: 0, right: 24, top: 16, bottom: 8),
+                          child: LineChart(
+                            HBGrafik(),
                           ),
                         ),
                       ),
@@ -259,7 +281,7 @@ class _BeratBadanState extends State<BeratBadan> {
                                   top: 29,
                                 ),
                                 child: Text(
-                                  "Berapa Berat Kamu Hari Ini ?",
+                                  "Berapa BB dan HB Kamu Hari Ini ?",
                                   textAlign: TextAlign.left,
                                   style: TextStyle(
                                     fontWeight: FontWeight.w500,
@@ -279,7 +301,7 @@ class _BeratBadanState extends State<BeratBadan> {
                               right: 16,
                             ),
                             child: Text(
-                              "Tambah Berat Badan\nSimpan riwayat berat badan Anda untuk Analisa!",
+                              "Tambah Berat Badan dan HB\nSimpan riwayat berat badan Anda untuk Analisa!",
                               textAlign: TextAlign.left,
                               style: TextStyle(
                                 fontWeight: FontWeight.w500,
@@ -396,100 +418,72 @@ class _BeratBadanState extends State<BeratBadan> {
     );
   }
 
-  // LineChartData avgData() {
-  //   return LineChartData(
-  //     lineTouchData: const LineTouchData(enabled: false),
-  //     gridData: FlGridData(
-  //       show: true,
-  //       drawHorizontalLine: true,
-  //       verticalInterval: 1,
-  //       horizontalInterval: 1,
-  //       getDrawingVerticalLine: (value) {
-  //         return const FlLine(
-  //           color: Color(0xff37434d),
-  //           strokeWidth: 1,
-  //         );
-  //       },
-  //       getDrawingHorizontalLine: (value) {
-  //         return const FlLine(
-  //           color: Color(0xff37434d),
-  //           strokeWidth: 1,
-  //         );
-  //       },
-  //     ),
-  //     titlesData: FlTitlesData(
-  //       show: true,
-  //       bottomTitles: AxisTitles(
-  //         sideTitles: SideTitles(
-  //           showTitles: true,
-  //           reservedSize: 30,
-  //           getTitlesWidget: bottomTitleWidgets,
-  //           interval: 1,
-  //         ),
-  //       ),
-  //       leftTitles: AxisTitles(
-  //         sideTitles: SideTitles(
-  //           showTitles: true,
-  //           getTitlesWidget: leftTitleWidgets,
-  //           reservedSize: 42,
-  //           interval: 1,
-  //         ),
-  //       ),
-  //       topTitles: const AxisTitles(
-  //         sideTitles: SideTitles(showTitles: false),
-  //       ),
-  //       rightTitles: const AxisTitles(
-  //         sideTitles: SideTitles(showTitles: false),
-  //       ),
-  //     ),
-  //     borderData: FlBorderData(
-  //       show: true,
-  //       border: Border.all(color: const Color(0xff37434d)),
-  //     ),
-  //     minX: 0,
-  //     maxX: 11,
-  //     minY: 0,
-  //     maxY: 6,
-  //     lineBarsData: [
-  //       LineChartBarData(
-  //         spots: const [
-  //           FlSpot(0, 3.44),
-  //           FlSpot(2.6, 3.44),
-  //           FlSpot(4.9, 3.44),
-  //           FlSpot(6.8, 3.44),
-  //           FlSpot(8, 3.44),
-  //           FlSpot(9.5, 3.44),
-  //           FlSpot(11, 3.44),
-  //         ],
-  //         isCurved: true,
-  //         gradient: LinearGradient(
-  //           colors: [
-  //             ColorTween(begin: gradientColors[0], end: gradientColors[1])
-  //                 .lerp(0.2)!,
-  //             ColorTween(begin: gradientColors[0], end: gradientColors[1])
-  //                 .lerp(0.2)!,
-  //           ],
-  //         ),
-  //         barWidth: 5,
-  //         isStrokeCapRound: true,
-  //         dotData: const FlDotData(
-  //           show: false,
-  //         ),
-  //         belowBarData: BarAreaData(
-  //           show: true,
-  //           gradient: LinearGradient(
-  //             colors: [
-  //               ColorTween(begin: gradientColors[0], end: gradientColors[1])
-  //                   .lerp(0.2)!
-  //                   .withOpacity(0.1),
-  //               ColorTween(begin: gradientColors[0], end: gradientColors[1])
-  //                   .lerp(0.2)!
-  //                   .withOpacity(0.1),
-  //             ],
-  //           ),
-  //         ),
-  //       ),
-  //     ],
-  //   );
-  // }
+  LineChartData HBGrafik() {
+    return LineChartData(
+      gridData: FlGridData(
+        show: true,
+        drawVerticalLine: true,
+        horizontalInterval: 1,
+        verticalInterval: 1,
+        getDrawingHorizontalLine: (value) {
+          return const FlLine(
+            color: AppColors.mainGridLineColor,
+            strokeWidth: 1,
+          );
+        },
+        getDrawingVerticalLine: (value) {
+          return const FlLine(
+            color: AppColors.mainGridLineColor,
+            strokeWidth: 1,
+          );
+        },
+      ),
+      titlesData: FlTitlesData(
+        show: true,
+        rightTitles: const AxisTitles(
+          sideTitles: SideTitles(showTitles: false),
+        ),
+        topTitles: const AxisTitles(
+          sideTitles: SideTitles(showTitles: false),
+        ),
+        bottomTitles: AxisTitles(
+          sideTitles: SideTitles(
+            showTitles: true,
+            reservedSize: 30,
+            interval: 1,
+            getTitlesWidget: bottomTitleWidgets,
+          ),
+        ),
+      ),
+      borderData: FlBorderData(
+        show: true,
+        border: Border.all(color: const Color(0xff37434d)),
+      ),
+      minX: 0,
+      minY: 0,
+      maxY: 30,
+      lineBarsData: [
+        LineChartBarData(
+          spots: arHb,
+          isCurved: true,
+          gradient: LinearGradient(
+            colors: gradientColorsHB,
+          ),
+          barWidth: 5,
+          isStrokeCapRound: true,
+          dotData: FlDotData(
+            show: true,
+          ),
+          belowBarData: BarAreaData(
+            show: true,
+            gradient: LinearGradient(
+              colors: gradientColorsHB
+                  .map((color) => color.withOpacity(0.3))
+                  .toList(),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
 }

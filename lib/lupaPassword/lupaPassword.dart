@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:fluttertoast/fluttertoast.dart';
-import 'package:isi_piringku/Signup/signup_screen.dart';
-import 'package:isi_piringku/components/already_have_an_account_acheck.dart';
-import 'package:isi_piringku/components/constants.dart';
-import 'package:isi_piringku/dashboard/dashboard.dart';
-import 'package:isi_piringku/lupaPassword/inputPasswordBaru.dart';
-import 'package:isi_piringku/lupaPassword/lupaPassword.dart';
-import 'package:isi_piringku/model/user.dart';
+import 'package:monitoringobat/Signup/signup_screen.dart';
+import 'package:monitoringobat/components/already_have_an_account_acheck.dart';
+import 'package:monitoringobat/components/constants.dart';
+import 'package:monitoringobat/dashboard/dashboard.dart';
+import 'package:monitoringobat/lupaPassword/inputPasswordBaru.dart';
+import 'package:monitoringobat/lupaPassword/lupaPassword.dart';
+import 'package:monitoringobat/model/user.dart';
 
 import 'package:shared_preferences/shared_preferences.dart';
 

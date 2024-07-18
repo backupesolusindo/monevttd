@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:isi_piringku/components/constants.dart';
+import 'package:monitoringobat/components/constants.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:monitoringobat/util/colors.dart';
 
 class LoginScreenTopImage extends StatelessWidget {
   const LoginScreenTopImage({
@@ -12,22 +13,34 @@ class LoginScreenTopImage extends StatelessWidget {
     return Column(
       children: [
         SizedBox(height: defaultPadding * 2),
-        Row(
-          children: [
-            const Spacer(),
-            Expanded(
-              flex: 8,
-              child: Image.asset(
-                "assets/images/logo_isipiringku.png",
-                height: 150,
-              ),
+        Center(
+          child: Container(
+            width: 160,
+            height: 160,
+            decoration: BoxDecoration(
+              color: Colors.grey.withOpacity(0.23),
+              borderRadius: BorderRadius.circular(100),
+              boxShadow: [
+                BoxShadow(
+                  offset: Offset(0, 8),
+                  blurRadius: 10,
+                  color: PrimaryColor.withOpacity(0.23),
+                ),
+              ],
             ),
-            const Spacer(),
-          ],
+            child: Column(children: [
+              Image.asset("assets/images/logoTTD.png", width: 100, height: 100),
+              Text("MONITORING TTD",
+                  style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold)),
+            ]),
+          ),
         ),
         SizedBox(height: defaultPadding * 2),
         Text(
-          "LOGIN SEPIRINGQ",
+          "LOGIN USER",
           style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
         ),
         SizedBox(height: defaultPadding * 2),

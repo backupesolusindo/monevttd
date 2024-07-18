@@ -5,7 +5,7 @@ class UserData {
   final String nama;
   final String tglLahir;
   final String tinggiBadan; // Mengubah tipe data menjadi int
-  final String beratBadan;
+  late final String beratBadan;
   final String alamat;
   final String kecamatan;
   final String kabupaten;

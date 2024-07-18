@@ -4,10 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'dart:convert';
 
-import 'package:isi_piringku/bloc/nav/bottom_nav.dart';
+import 'package:monitoringobat/bloc/nav/bottom_nav.dart';
 import 'package:http/http.dart' as http;
-import 'package:isi_piringku/util/colors.dart';
-import 'package:isi_piringku/util/core.dart';
+import 'package:monitoringobat/util/colors.dart';
+import 'package:monitoringobat/util/core.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:table_calendar/table_calendar.dart';
 
@@ -26,6 +26,36 @@ class _InputDarahState extends State<InputDarah> {
   String accessToken = "";
   String txtNama = "";
   List<dynamic> arTambahDarah = [];
+
+  final DateTime now = DateTime.now();
+  final DateFormat monthYearFormat = DateFormat.yMMMM('ID');
+  final DateFormat tanggal = DateFormat.yMMMMd('ID');
+  List<DateTime> days = [];
+  final List<String> weekdays = [
+    "Sen",
+    "Sel",
+    "Rab",
+    "Kam",
+    "Jum",
+    "Sab",
+    "Min"
+  ];
+
+  List<DateTime> _daysInMonth(int year, int month) {
+    List<DateTime> days = [];
+    DateTime firstDayOfMonth = DateTime(year, month, 1);
+    DateTime lastDayOfMonth = DateTime(year, month + 1, 0);
+
+    for (int i = 0; i < firstDayOfMonth.weekday - 1; i++) {
+      days.add(DateTime(0, 0, 0)); // Fill with empty values for the first week
+    }
+
+    for (int day = 1; day <= lastDayOfMonth.day; day++) {
+      days.add(DateTime(year, month, day));
+    }
+
+    return days;
+  }
 
   Future<void> getToken() async {
     try {
@@ -101,26 +131,13 @@ class _InputDarahState extends State<InputDarah> {
     final response = await http.post(
       url,
       headers: {
-        // 'Authorization': 'Bearer $accessToken',
+        'Authorization': 'Bearer $accessToken',
       },
       body: data, // Konversi objek data ke dalam bentuk JSON
     );
-
+    print('Res: ${response.statusCode}, ${response.body}');
     if (response.statusCode == 200) {
       fetchDataDarah();
-      // Data successfully sent to the server
-      // final record = TambahDarah(
-      //   id_user: ID,
-      //   tanggal: currentDate,
-      //   status: 'sudah',
-      // );
-
-      // In a real application, you would save the record to your database.
-      // Here, we'll add it to a list for demonstration purposes.
-      // _database.add(record);
-
-      // Navigate back to the previous screen (Dashboard in this case)
-      // Navigator.of(context).pop();
     } else {
       // Handle error here, e.g., show an error message to the user
       print('Error: ${response.statusCode}, ${response.body}');
@@ -151,7 +168,7 @@ class _InputDarahState extends State<InputDarah> {
         if (datenow.month < 10) {
           angkabln = "0" + angkabln.toString();
         }
-        var tanggal = angkatgl + "-" + angkabln + "-" + datenow.year.toString();
+        var tanggal = datenow.year.toString() + "-" + angkabln + "-" + angkatgl;
         responseList.forEach((element) {
           arTambahDarah.add(element['tanggal']);
         });
@@ -170,21 +187,23 @@ class _InputDarahState extends State<InputDarah> {
   void initState() {
     super.initState();
     loadUserData();
+    setState(() {
+      days = _daysInMonth(now.year, now.month);
+    });
   }
 
   @override
   Widget build(BuildContext context) {
+    var size = MediaQuery.of(context).size;
+
     return Scaffold(
       bottomNavigationBar: const BottomNavBar(selected: 4),
-      appBar: AppBar(
-        title: Text('Tambah Darah'),
-        backgroundColor: SecondaryColor,
-      ),
+      backgroundColor: BackgroundColor,
       body: Stack(
         children: [
           SafeArea(
             child: Container(
-              width: MediaQuery.of(context).size.width,
+              width: size.width,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -196,21 +215,22 @@ class _InputDarahState extends State<InputDarah> {
                         children: [
                           Row(
                             children: [
+                              Text(
+                                'Tambah Darah Hari Ini',
+                                style: TextStyle(
+                                  color: TextColordark,
+                                  fontSize: 24,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              Expanded(
+                                flex: 1,
+                                child: Container(),
+                              ),
                               Image.asset(
                                 'assets/images/calendar.png',
                                 width: 30.0,
                                 height: 30.0,
-                              ),
-                              SizedBox(
-                                width: 10.0,
-                              ),
-                              Text(
-                                'Tambah Darah Hari Ini',
-                                style: TextStyle(
-                                  fontSize: 15,
-                                  color: Colors.black,
-                                  fontWeight: FontWeight.bold,
-                                ),
                               ),
                             ],
                           ),
@@ -219,9 +239,8 @@ class _InputDarahState extends State<InputDarah> {
                             height:
                                 20, // Tambahkan jarak antara teks dan Container
                           ),
-                          if (_isBelumMinum)
+                          if (!_isBelumMinum)
                             Container(
-                              width: 400, // Lebar container
                               padding: EdgeInsets.all(
                                   16.0), // Padding pada Container
                               decoration: BoxDecoration(
@@ -244,7 +263,55 @@ class _InputDarahState extends State<InputDarah> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    'Tanggal:',
+                                    'Tanggal : ' + tanggal.format(now),
+                                    style: TextStyle(
+                                      fontSize: 15,
+                                      color: Colors.black,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  Text(
+                                    txtNama,
+                                    style: TextStyle(
+                                      fontSize: 15,
+                                      color: Colors.deepOrange,
+                                    ),
+                                  ),
+                                  Text(
+                                    'Anda sudah minum tablet tambah darah hari ini',
+                                    style: TextStyle(
+                                      fontSize: 15,
+                                      color: Colors.black,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          if (_isBelumMinum)
+                            Container(
+                              padding: EdgeInsets.all(
+                                  16.0), // Padding pada Container
+                              decoration: BoxDecoration(
+                                color: Colors
+                                    .white, // Warna latar belakang Container
+                                borderRadius: BorderRadius.circular(
+                                    10.0), // Radius sudut sebesar 10
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.grey.withOpacity(
+                                        0.5), // Warna shadow abu-abu
+                                    spreadRadius:
+                                        5, // Seberapa jauh shadow menyebar
+                                    blurRadius: 7, // Tingkat keburaman shadow
+                                    offset: Offset(0, 3), // Posisi shadow
+                                  ),
+                                ],
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Tanggal : ' + tanggal.format(now),
                                     style: TextStyle(
                                       fontSize: 15,
                                       color: Colors.black,
@@ -274,9 +341,12 @@ class _InputDarahState extends State<InputDarah> {
                                           _saveDataToDatabase();
                                         },
                                         style: ElevatedButton.styleFrom(
-                                          backgroundColor: Colors.green,
+                                          backgroundColor: AccentColor,
                                         ),
-                                        child: Text('Sudah'),
+                                        child: Text('SUDAH',
+                                            style: TextStyle(
+                                                color: Colors.white,
+                                                fontWeight: FontWeight.bold)),
                                       ),
                                       SizedBox(width: 30),
                                       ElevatedButton(
@@ -284,71 +354,133 @@ class _InputDarahState extends State<InputDarah> {
                                           // Aksi saat tombol "Belum" ditekan
                                         },
                                         style: ElevatedButton.styleFrom(
-                                          backgroundColor: Colors.red,
+                                          backgroundColor: SecondaryColor,
                                         ),
-                                        child: Text('Belum'),
+                                        child: Text('BELUM',
+                                            style: TextStyle(
+                                                color: Colors.white,
+                                                fontWeight: FontWeight.bold)),
                                       ),
                                     ],
                                   ),
                                 ],
                               ),
                             ),
-                          Container(
-                            margin: EdgeInsets.only(top: 20.0),
-                            padding: EdgeInsets.all(16.0),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(10.0),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.grey.withOpacity(0.5),
-                                  spreadRadius: 5,
-                                  blurRadius: 7,
-                                  offset: Offset(0, 3),
-                                ),
-                              ],
+                          SizedBox(
+                            height:
+                                32, // Tambahkan jarak antara teks dan Container
+                          ),
+                          Text("KALENDER TTD :",
+                              style: TextStyle(
+                                  color: PrimaryColor,
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold)),
+                          Center(
+                            child: Text(
+                              monthYearFormat.format(now).toUpperCase(),
+                              style: TextStyle(
+                                color: PrimaryColor,
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
-                            child: TableCalendar(
-                              locale: 'en_US',
-                              firstDay: DateTime.utc(2010, 10, 16),
-                              lastDay: DateTime.utc(2030, 3, 14),
-                              focusedDay: DateTime.now(),
-                              calendarFormat: CalendarFormat.month,
-                              headerStyle: HeaderStyle(
-                                formatButtonVisible: false,
-                              ),
-                              calendarStyle: CalendarStyle(
-                                todayDecoration: BoxDecoration(
-                                  color: Colors.orange,
-                                  shape: BoxShape.circle,
+                          ),
+                          Center(
+                            child: Container(
+                              width: size.width * 0.9,
+                              child: GridView.builder(
+                                shrinkWrap: true,
+                                physics: NeverScrollableScrollPhysics(),
+                                gridDelegate:
+                                    SliverGridDelegateWithFixedCrossAxisCount(
+                                  crossAxisCount: 7, // 7 days in a week
                                 ),
-                                selectedDecoration: BoxDecoration(
-                                  color: Colors.orange,
-                                  shape: BoxShape.circle,
-                                ),
+                                itemCount: weekdays.length,
+                                itemBuilder: (BuildContext context, int index) {
+                                  return Center(
+                                    child: Text(
+                                      weekdays[index],
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                  );
+                                },
                               ),
-                              eventLoader: (day) {
-                                // if (day.weekday == DateTime.monday) {
-                                //   return [Event('Event A'), Event('Event B')];
-                                // }
-                                var angkatgl = day.day.toString();
-                                var angkabln = day.month.toString();
-                                if (day.day < 10) {
-                                  angkatgl = "0" + angkatgl.toString();
-                                }
-                                if (day.month < 10) {
-                                  angkabln = "0" + angkabln.toString();
-                                }
-                                var tanggal = angkatgl +
-                                    "-" +
-                                    angkabln +
-                                    "-" +
-                                    day.year.toString();
-                                if (arTambahDarah.contains(tanggal)) {
-                                  return [Event('Event A'), Event('Event B')];
-                                }
-                                return [];
-                              },
+                            ),
+                          ),
+                          Center(
+                            child: Container(
+                              width: size.width * 0.9,
+                              child: GridView.builder(
+                                shrinkWrap: true,
+                                physics: NeverScrollableScrollPhysics(),
+                                gridDelegate:
+                                    SliverGridDelegateWithFixedCrossAxisCount(
+                                  crossAxisCount: 7, // 7 days in a week
+                                ),
+                                itemCount: days.length,
+                                itemBuilder: (BuildContext context, int index) {
+                                  final DateTime day = days[index];
+                                  final bool isToday = day.day == now.day;
+                                  final bool isSelected = day.day == now.day;
+                                  Color color_terpilih = WhiteColor;
+                                  BoxShadow shadow_terpilih = boxShadow;
+
+                                  if (isToday) {
+                                    color_terpilih = AccentColor;
+                                    shadow_terpilih = boxShadowAccent;
+                                  }
+
+                                  for (var i = 0;
+                                      i < arTambahDarah.length;
+                                      i++) {
+                                    var tgl = arTambahDarah[i].toString();
+                                    var tgl2 = tgl.split("-");
+                                    var tgl3 = int.parse(tgl2[2]).toString() +
+                                        "-" +
+                                        int.parse(tgl2[1]).toString() +
+                                        "-" +
+                                        int.parse(tgl2[0]).toString();
+                                    var tgl_now = day.day.toString() +
+                                        "-" +
+                                        day.month.toString() +
+                                        "-" +
+                                        day.year.toString();
+                                    if (tgl3 == tgl_now) {
+                                      color_terpilih = PrimaryColor;
+                                      shadow_terpilih = boxShadowPrimary;
+                                    }
+                                    // print(tgl3 + "==" + tgl_now);
+                                  }
+
+                                  return Container(
+                                    margin: EdgeInsets.all(4),
+                                    decoration: BoxDecoration(
+                                      color: color_terpilih,
+                                      borderRadius: BorderRadius.circular(16),
+                                      boxShadow: [shadow_terpilih],
+                                    ),
+                                    child: Column(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        Text(
+                                          day.day.toString(),
+                                          style: TextStyle(
+                                            color: isSelected
+                                                ? Colors.white
+                                                : Colors.black,
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                },
+                              ),
                             ),
                           )
                         ],

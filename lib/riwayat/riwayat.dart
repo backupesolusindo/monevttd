@@ -2,15 +2,15 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
-import 'package:isi_piringku/bloc/nav/bottom_nav.dart';
-import 'package:isi_piringku/util/colors.dart';
-import 'package:isi_piringku/util/core.dart';
+import 'package:monitoringobat/bloc/nav/bottom_nav.dart';
+import 'package:monitoringobat/util/colors.dart';
+import 'package:monitoringobat/util/core.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:syncfusion_flutter_charts/charts.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'package:fl_chart/fl_chart.dart';
-import 'package:isi_piringku/model/makanan.dart';
+import 'package:monitoringobat/model/makanan.dart';
 
 import '../model/user.dart';
 import '../resources/app_resources.dart';

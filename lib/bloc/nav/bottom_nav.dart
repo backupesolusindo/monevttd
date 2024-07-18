@@ -2,7 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:isi_piringku/util/colors.dart';
+import 'package:monitoringobat/util/colors.dart';
 
 class BottomNavBar extends StatefulWidget {
   const BottomNavBar({super.key, required this.selected});
@@ -37,11 +37,11 @@ class _BottomNavBarState extends State<BottomNavBar> {
           children: [
             Expanded(
                 child: IconBottomBar(
-                    index: 1,
-                    label: 'Kalori',
+                    index: 0,
+                    label: 'Home',
                     selected: widget.selected,
-                    icon: Icons.food_bank_rounded,
-                    navigateTo: "/kalori")),
+                    icon: Icons.home_rounded,
+                    navigateTo: "/dashboard")),
             Expanded(
               child: IconBottomBar(
                   index: 4,
@@ -58,20 +58,6 @@ class _BottomNavBarState extends State<BottomNavBar> {
                   icon: Icons.monitor_weight_rounded,
                   navigateTo: "/beratbadan"),
             ),
-            Expanded(
-                child: IconBottomBar(
-                    index: 0,
-                    label: 'Home',
-                    selected: widget.selected,
-                    icon: Icons.home_rounded,
-                    navigateTo: "/dashboard")),
-            Expanded(
-                child: IconBottomBar(
-                    index: 2,
-                    label: 'Riwayat',
-                    selected: widget.selected,
-                    icon: Icons.history,
-                    navigateTo: "/riwayat")),
             Expanded(
                 child: IconBottomBar(
                     index: 3,

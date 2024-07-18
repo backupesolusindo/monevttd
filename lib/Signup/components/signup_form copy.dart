@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:isi_piringku/components/constants.dart';
+import 'package:monitoringobat/components/constants.dart';
 
 import '../../../components/already_have_an_account_acheck.dart';
 

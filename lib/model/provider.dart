@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:isi_piringku/model/user.dart';
+import 'package:monitoringobat/model/user.dart';
 
 import 'package:flutter/material.dart';
 
