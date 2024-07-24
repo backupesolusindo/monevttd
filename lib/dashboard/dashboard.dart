@@ -1,3 +1,5 @@
+import 'dart:async';
+import 'dart:collection';
 import 'dart:convert';
 import 'dart:math';
 
@@ -30,8 +32,14 @@ class Dashboard extends StatefulWidget {
   State<Dashboard> createState() => _DashboardState();
 }
 
-class _DashboardState extends State<Dashboard> {
+class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
   Map<String, dynamic>? forIMT;
+  late AnimationController _animation_controller;
+  late Animation<double> _anim_tb;
+  late Animation<double> _anim_bb;
+  late Animation<double> _anim_umur;
+  late Animation<double> _anim_imt;
+
   String imtText = '';
   String KeteranganImtText = '';
   bool _isBelumMinum = true;
@@ -40,11 +48,15 @@ class _DashboardState extends State<Dashboard> {
   List<dynamic> arTambahDarah = [];
   String Nama = '';
   String Email = '';
+  var tinggiBadanCm = 0.0;
+  var beratBadanKg = 0.0;
 
   String TB = '';
   String BB = '';
   String Id = '';
-  String umur = '';
+  String umur = '0';
+
+  bool isLoaded = true;
 
   late YoutubePlayerController _playercontroller;
 
@@ -71,13 +83,19 @@ class _DashboardState extends State<Dashboard> {
     loadUserData();
   }
 
+  @override
+  void dispose() {
+    _playercontroller.dispose();
+    super.dispose();
+  }
+
   Future<void> loadUserData() async {
     final prefs = await SharedPreferences.getInstance();
     final userDataString = prefs.getString('user_data');
 
     if (userDataString != null) {
       final userData = UserData.fromJson(json.decode(userDataString));
-      print(userData.nama);
+      // print(userData.nama);
 
       setState(() {
         Nama = userData.nama;
@@ -86,30 +104,68 @@ class _DashboardState extends State<Dashboard> {
         BB = userData.beratBadan;
         Id = userData.idUser.toString();
         umur = userData.umur;
+        _initializeAsyncOperations();
       });
-      _initializeAsyncOperations();
     }
   }
 
-  @override
-  void dispose() {
-    _playercontroller.dispose();
-    super.dispose();
+  void processQueue(Queue<VoidCallback> queue) {
+    if (queue.isEmpty) {
+      return;
+    }
+
+    // Dequeue and run the first task
+    VoidCallback task = queue.removeFirst();
+    task();
+
+    // Schedule the next task
+    Future.delayed(Duration.zero, () => processQueue(queue));
   }
 
   Future<void> _initializeAsyncOperations() async {
-    await Future.wait([
-      fetchData(),
-      fetchDataDarah(),
-      fetchData2(),
-      fetchData3(),
-    ]);
+    // Initialize the AnimationController
+    _animation_controller = AnimationController(
+      duration: Duration(seconds: 2), // Set the duration of the animation
+      vsync: this,
+    );
 
-    if (mounted) {
-      setState(() {
-        // _loading = false;
-      });
-    }
+    // Initialize any async operations here
+    Queue<VoidCallback> taskQueue = Queue<VoidCallback>();
+    // Add tasks to the queue
+    taskQueue.add(() => fetchData());
+    taskQueue.add(() => fetchDataDarah());
+    taskQueue.add(() => fetchData2());
+    taskQueue.add(() => fetchData3());
+    taskQueue.add(() => finishLoading());
+    // Process the queue
+    processQueue(taskQueue);
+  }
+
+  Future<void> finishLoading() async {
+    // delay 2 seconds
+    await Future.delayed(Duration(seconds: 1));
+    setState(() {
+      isLoaded = false;
+
+      // Define the tween to animate from 0 to the target number
+      _anim_tb = Tween<double>(begin: 0, end: tinggiBadanCm)
+          .animate(_animation_controller)
+        ..addListener(() {
+          setState(() {});
+        });
+      _anim_bb = Tween<double>(begin: 0, end: beratBadanKg)
+          .animate(_animation_controller)
+        ..addListener(() {
+          setState(() {});
+        });
+      _anim_umur = Tween<double>(begin: 0, end: double.parse(umur))
+          .animate(_animation_controller)
+        ..addListener(() {
+          setState(() {});
+        });
+      // Start the animation
+      _animation_controller.forward();
+    });
   }
 
   Future<void> fetchDataDarah() async {
@@ -178,8 +234,8 @@ class _DashboardState extends State<Dashboard> {
       final data = jsonDecode(response.body);
       forIMT = data['response'][0];
 
-      final tinggiBadanCm = double.parse(forIMT!['tinggi_badan']);
-      final beratBadanKg = double.parse(forIMT!['berat_badan']);
+      tinggiBadanCm = double.parse(forIMT!['tinggi_badan']);
+      beratBadanKg = double.parse(forIMT!['berat_badan']);
 
       //update sharepref berat_badan
       final prefs = await SharedPreferences.getInstance();
@@ -279,204 +335,156 @@ class _DashboardState extends State<Dashboard> {
     return Scaffold(
       bottomNavigationBar: BottomNavBar(selected: 0),
       backgroundColor: BackgroundColor,
-      body: ListView(
-        children: [
-          SizedBox(
-            height: 20,
-          ),
-          Container(
-            // height: 200.0,
-            width: double.infinity,
-            child: Column(
+      body: isLoaded
+          ? Center(
+              child: CircularProgressIndicator(),
+            )
+          : ListView(
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Container(
-                      margin: EdgeInsets.only(left: 24),
-                      child: Text(
-                        'Hi, ' + Nama + Id,
-                        style: TextStyle(
-                          color: TextColordark,
-                          fontSize: 32,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                    Container(
-                      margin: EdgeInsets.only(right: 24),
-                      child: Transform.scale(
-                        scale: 1.5,
-                        child: Icon(
-                          Icons.notifications,
-                          color: PrimaryColor,
-                        ),
-                      ),
-                    ),
-                  ],
+                SizedBox(
+                  height: 20,
                 ),
-              ],
-            ),
-          ),
-          SizedBox(
-            height: 10,
-          ),
-          Container(
-            padding: EdgeInsets.symmetric(horizontal: 24),
-            child: Text(
-              'DATA KESEHATAN ANDA : ',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
-            child: Container(
-              height: 150,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  Expanded(
-                    flex: 1,
-                    child: Container(
-                      margin: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                      decoration: BoxDecoration(
-                          color: AccentColor,
-                          borderRadius: BorderRadius.circular(15.0),
-                          boxShadow: [boxShadowAccent]),
-                      child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.person,
-                              color: TextColorLight,
-                              size: 40,
-                            ),
-                            Text(
-                              umur + ' Tahun',
+                Container(
+                  // height: 200.0,
+                  width: double.infinity,
+                  child: Column(
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Container(
+                            margin: EdgeInsets.only(left: 24),
+                            child: Text(
+                              'Hi, ' + Nama + Id,
                               style: TextStyle(
-                                color: TextColorLight,
-                                fontSize: 16,
+                                color: TextColordark,
+                                fontSize: 32,
                                 fontWeight: FontWeight.bold,
                               ),
-                              textAlign: TextAlign.center,
                             ),
-                            Text(
-                              'Umur\n',
-                              style: TextStyle(
-                                color: TextColorLight,
-                                fontSize: 14,
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                          ]),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                SizedBox(
+                  height: 10,
+                ),
+                Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+                  child: Container(
+                    height: 150,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        Expanded(
+                          flex: 1,
+                          child: Container(
+                            margin: EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 8),
+                            decoration: BoxDecoration(
+                                color: AccentColor,
+                                borderRadius: BorderRadius.circular(15.0),
+                                boxShadow: [boxShadowAccent]),
+                            child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    Icons.person,
+                                    color: TextColorLight,
+                                    size: 40,
+                                  ),
+                                  Text(
+                                    _anim_umur.value.toStringAsFixed(0) +
+                                        ' Tahun',
+                                    style: TextStyle(
+                                      color: TextColorLight,
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                  Text(
+                                    'Umur\n',
+                                    style: TextStyle(
+                                      color: TextColorLight,
+                                      fontSize: 14,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ]),
+                          ),
+                        ),
+                        Expanded(
+                          flex: 1,
+                          child: Container(
+                            margin: EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 8),
+                            decoration: BoxDecoration(
+                                color: AccentColor,
+                                borderRadius: BorderRadius.circular(15.0),
+                                boxShadow: [boxShadowAccent]),
+                            child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    Icons.height,
+                                    color: TextColorLight,
+                                    size: 40,
+                                  ),
+                                  Text(
+                                    _anim_tb.value.toStringAsFixed(0) + 'cm',
+                                    style: TextStyle(
+                                      color: TextColorLight,
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                  Text(
+                                    'Tinggi Badan',
+                                    style: TextStyle(
+                                      color: TextColorLight,
+                                      fontSize: 14,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ]),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  Expanded(
-                    flex: 1,
-                    child: Container(
-                      margin: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                      decoration: BoxDecoration(
-                          color: AccentColor,
-                          borderRadius: BorderRadius.circular(15.0),
-                          boxShadow: [boxShadowAccent]),
-                      child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.height,
-                              color: TextColorLight,
-                              size: 40,
-                            ),
-                            Text(
-                              TB + 'cm',
-                              style: TextStyle(
-                                color: TextColorLight,
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                            Text(
-                              'Tinggi Badan',
-                              style: TextStyle(
-                                color: TextColorLight,
-                                fontSize: 14,
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                          ]),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
-            child: Container(
-              height: 150,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  Expanded(
-                    flex: 1,
-                    child: Container(
-                      margin: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                      decoration: BoxDecoration(
-                          color: AccentColor,
-                          borderRadius: BorderRadius.circular(15.0),
-                          boxShadow: [boxShadowAccent]),
-                      child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.monitor_weight_rounded,
-                              color: TextColorLight,
-                              size: 40,
-                            ),
-                            Text(
-                              BB + 'kg',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                            Text(
-                              'Berat Badan',
-                              style: TextStyle(
-                                color: TextColorLight,
-                                fontSize: 14,
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                          ]),
-                    ),
-                  ),
-                  Expanded(
-                    flex: 1,
-                    child: Container(
-                      margin: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                      decoration: BoxDecoration(
-                          color: AccentColor,
-                          borderRadius: BorderRadius.circular(15.0),
-                          boxShadow: [boxShadowAccent]),
-                      child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.fitness_center_rounded,
-                              color: TextColorLight,
-                              size: 40,
-                            ),
-                            forIMT == null
-                                ? CircularProgressIndicator()
-                                : Text(
-                                    imtText,
+                ),
+                Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+                  child: Container(
+                    height: 150,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        Expanded(
+                          flex: 1,
+                          child: Container(
+                            margin: EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 8),
+                            decoration: BoxDecoration(
+                                color: AccentColor,
+                                borderRadius: BorderRadius.circular(15.0),
+                                boxShadow: [boxShadowAccent]),
+                            child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    Icons.monitor_weight_rounded,
+                                    color: TextColorLight,
+                                    size: 40,
+                                  ),
+                                  Text(
+                                    _anim_bb.value.toStringAsFixed(0) + 'kg',
                                     style: TextStyle(
                                       color: Colors.white,
                                       fontSize: 16,
@@ -484,17 +492,99 @@ class _DashboardState extends State<Dashboard> {
                                     ),
                                     textAlign: TextAlign.center,
                                   ),
-                            Text(
-                              KeteranganImtText,
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                              ),
-                              textAlign: TextAlign.center,
+                                  Text(
+                                    'Berat Badan',
+                                    style: TextStyle(
+                                      color: TextColorLight,
+                                      fontSize: 14,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ]),
+                          ),
+                        ),
+                        Expanded(
+                          flex: 1,
+                          child: Container(
+                            margin: EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 8),
+                            decoration: BoxDecoration(
+                                color: AccentColor,
+                                borderRadius: BorderRadius.circular(15.0),
+                                boxShadow: [boxShadowAccent]),
+                            child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    Icons.fitness_center_rounded,
+                                    color: TextColorLight,
+                                    size: 40,
+                                  ),
+                                  forIMT == null
+                                      ? CircularProgressIndicator()
+                                      : Text(
+                                          imtText,
+                                          style: TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                          textAlign: TextAlign.center,
+                                        ),
+                                  Text(
+                                    KeteranganImtText,
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                  Text(
+                                    'IMT\n',
+                                    style: TextStyle(
+                                      color: TextColorLight,
+                                      fontSize: 14,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ]),
+                          ),
+                        )
+                      ],
+                    ),
+                  ),
+                ),
+                GestureDetector(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => Kuisioner(),
+                        ),
+                      );
+                    },
+                    child: Container(
+                      margin: EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+                      padding:
+                          EdgeInsets.symmetric(horizontal: 0, vertical: 10),
+                      decoration: BoxDecoration(
+                          color: PrimaryColor,
+                          borderRadius: BorderRadius.circular(15.0),
+                          boxShadow: [boxShadowPrimary]),
+                      child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.quiz_sharp,
+                              color: TextColorLight,
+                              size: 30,
+                            ),
+                            SizedBox(
+                              width: 10,
                             ),
                             Text(
-                              'IMT\n',
+                              'ISI KUISIONER',
                               style: TextStyle(
                                 color: TextColorLight,
                                 fontSize: 14,
@@ -502,352 +592,316 @@ class _DashboardState extends State<Dashboard> {
                               textAlign: TextAlign.center,
                             ),
                           ]),
-                    ),
-                  )
-                ],
-              ),
-            ),
-          ),
-          GestureDetector(
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => Kuisioner(),
-                  ),
-                );
-              },
-              child: Container(
-                margin: EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-                padding: EdgeInsets.symmetric(horizontal: 0, vertical: 10),
-                decoration: BoxDecoration(
-                    color: PrimaryColor,
-                    borderRadius: BorderRadius.circular(15.0),
-                    boxShadow: [boxShadowPrimary]),
-                child:
-                    Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                  Icon(
-                    Icons.quiz_sharp,
-                    color: TextColorLight,
-                    size: 30,
-                  ),
-                  SizedBox(
-                    width: 10,
-                  ),
-                  Text(
-                    'ISI KUISIONER',
-                    style: TextStyle(
-                      color: TextColorLight,
-                      fontSize: 14,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ]),
-              )),
-          SizedBox(
-            height: 16,
-          ),
-          Container(
-              // height: 140,
-              margin: EdgeInsets.symmetric(horizontal: 24),
-              padding: EdgeInsets.symmetric(horizontal: 0, vertical: 10),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text("KALENDER TTD :",
-                      style:
-                          TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                  //nama bulan dan tahun
-                  if (_isBelumMinum)
-                    Container(
-                      height: 20,
-                      margin: EdgeInsets.symmetric(vertical: 4),
-                      child: Marquee(
-                        text:
-                            'Anda belum minum obat hari ini, jangan lupa minum obat ya!',
-                        style: TextStyle(
-                          color: PrimaryColor,
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                        scrollAxis: Axis.horizontal,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        blankSpace: 20.0,
-                        velocity: 100.0,
-                        pauseAfterRound: Duration(seconds: 1),
-                        startPadding: 10.0,
-                        accelerationDuration: Duration(seconds: 1),
-                        accelerationCurve: Curves.linear,
-                        decelerationDuration: Duration(milliseconds: 500),
-                        decelerationCurve: Curves.easeOut,
-                      ),
-                    ),
-                  Center(
-                    child: Text(
-                      monthYearFormat.format(now).toUpperCase(),
-                      style: TextStyle(
-                        color: PrimaryColor,
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                  Center(
-                    child: Container(
-                      width: size.width * 0.9,
-                      child: GridView.builder(
-                        shrinkWrap: true,
-                        physics: NeverScrollableScrollPhysics(),
-                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 7, // 7 days in a week
-                        ),
-                        itemCount: weekdays.length,
-                        itemBuilder: (BuildContext context, int index) {
-                          return Center(
-                            child: Text(
-                              weekdays[index],
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 14,
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                  ),
-                  Center(
-                    child: Container(
-                      width: size.width * 0.9,
-                      child: GridView.builder(
-                        shrinkWrap: true,
-                        physics: NeverScrollableScrollPhysics(),
-                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 7, // 7 days in a week
-                        ),
-                        itemCount: days.length,
-                        itemBuilder: (BuildContext context, int index) {
-                          final DateTime day = days[index];
-                          final bool isToday = day.day == now.day;
-                          final bool isSelected = day.day == now.day;
-                          Color color_terpilih = WhiteColor;
-                          BoxShadow shadow_terpilih = boxShadow;
-
-                          if (isToday) {
-                            color_terpilih = AccentColor;
-                            shadow_terpilih = boxShadowAccent;
-                          }
-
-                          for (var i = 0; i < arTambahDarah.length; i++) {
-                            var tgl = arTambahDarah[i].toString();
-                            var tgl2 = tgl.split("-");
-                            var tgl3 = int.parse(tgl2[2]).toString() +
-                                "-" +
-                                int.parse(tgl2[1]).toString() +
-                                "-" +
-                                int.parse(tgl2[0]).toString();
-                            var tgl_now = day.day.toString() +
-                                "-" +
-                                day.month.toString() +
-                                "-" +
-                                day.year.toString();
-                            if (tgl3 == tgl_now) {
-                              color_terpilih = PrimaryColor;
-                              shadow_terpilih = boxShadowPrimary;
-                            }
-                            // print(tgl3 + "==" + tgl_now);
-                          }
-
-                          return Container(
-                            margin: EdgeInsets.all(4),
-                            decoration: BoxDecoration(
-                              color: color_terpilih,
-                              borderRadius: BorderRadius.circular(16),
-                              boxShadow: [shadow_terpilih],
-                            ),
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Text(
-                                  day.day.toString(),
-                                  style: TextStyle(
-                                    color: isSelected
-                                        ? Colors.white
-                                        : Colors.black,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                  )
-                ],
-              )),
-          SizedBox(
-            height: 16,
-          ),
-          Container(
-            padding: EdgeInsets.symmetric(horizontal: 24),
-            child: Text(
-              'VIDEO EDUKASI : ',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-          Container(
-              margin: EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-              padding: EdgeInsets.all(4),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(16.0),
-                boxShadow: [boxShadowPrimary],
-              ),
-              child: YoutubePlayerBuilder(
-                // YoutubePlayerBuilder
-                player: YoutubePlayer(
-                  controller: _playercontroller,
-                  showVideoProgressIndicator: true,
-                  progressIndicatorColor: Colors.blueAccent,
-                  topActions: <Widget>[
-                    const SizedBox(width: 8.0),
-                    Expanded(
-                      child: Text(
-                        _playercontroller.metadata.title,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 18.0,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                        maxLines: 1,
-                      ),
-                    ),
-                    IconButton(
-                      icon: const Icon(
-                        Icons.settings,
-                        color: Colors.white,
-                        size: 25.0,
-                      ),
-                      onPressed: () {
-                        print('Settings Tapped!');
-                        _playercontroller.play();
-                      },
-                    ),
-                  ],
-                  onReady: () {
-                    print('Player is ready.');
-                  },
+                    )),
+                SizedBox(
+                  height: 16,
                 ),
-                builder: (context, player) {
-                  return Column(
-                    children: [
-                      // some widgets
-                      player,
-                      //some other widgets
-                    ],
-                  );
-                },
-              )),
-          SizedBox(
-            height: 10,
-          ),
-          Container(
-            padding: EdgeInsets.symmetric(horizontal: 24),
-            child: Text(
-              'ARTIKER TERBARU : ',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-          ListView.builder(
-            shrinkWrap: true,
-            physics: NeverScrollableScrollPhysics(),
-            itemCount: data.length, // Jumlah card yang ingin ditampilkan
-            scrollDirection: Axis.vertical, // Untuk menggeser card ke samping
-            itemBuilder: (BuildContext context, int index) {
-              // Daftar warna gradient yang berbeda
-              List<List<Color>> gradients = [
-                [PrimaryColor, Colors.white],
-                [SecondaryColor, Colors.white],
-                [ThirdColor, Colors.white],
-                [PrimaryColor, Colors.white],
-                [SecondaryColor, Colors.white],
-              ];
+                Container(
+                    // height: 140,
+                    margin: EdgeInsets.symmetric(horizontal: 24),
+                    padding: EdgeInsets.symmetric(horizontal: 0, vertical: 10),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text("KALENDER TTD :",
+                            style: TextStyle(
+                                fontSize: 20, fontWeight: FontWeight.bold)),
+                        //nama bulan dan tahun
+                        if (_isBelumMinum)
+                          Container(
+                            height: 20,
+                            margin: EdgeInsets.symmetric(vertical: 4),
+                            child: Marquee(
+                              text:
+                                  'Anda belum minum obat hari ini, jangan lupa minum obat ya!',
+                              style: TextStyle(
+                                color: PrimaryColor,
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              scrollAxis: Axis.horizontal,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              blankSpace: 20.0,
+                              velocity: 100.0,
+                              pauseAfterRound: Duration(seconds: 1),
+                              startPadding: 10.0,
+                              accelerationDuration: Duration(seconds: 1),
+                              accelerationCurve: Curves.linear,
+                              decelerationDuration: Duration(milliseconds: 500),
+                              decelerationCurve: Curves.easeOut,
+                            ),
+                          ),
+                        Center(
+                          child: Text(
+                            monthYearFormat.format(now).toUpperCase(),
+                            style: TextStyle(
+                              color: PrimaryColor,
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        Center(
+                          child: Container(
+                            width: size.width * 0.9,
+                            child: GridView.builder(
+                              shrinkWrap: true,
+                              physics: NeverScrollableScrollPhysics(),
+                              gridDelegate:
+                                  SliverGridDelegateWithFixedCrossAxisCount(
+                                crossAxisCount: 7, // 7 days in a week
+                              ),
+                              itemCount: weekdays.length,
+                              itemBuilder: (BuildContext context, int index) {
+                                return Center(
+                                  child: Text(
+                                    weekdays[index],
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                        ),
+                        Center(
+                          child: Container(
+                            width: size.width * 0.9,
+                            child: GridView.builder(
+                              shrinkWrap: true,
+                              physics: NeverScrollableScrollPhysics(),
+                              gridDelegate:
+                                  SliverGridDelegateWithFixedCrossAxisCount(
+                                crossAxisCount: 7, // 7 days in a week
+                              ),
+                              itemCount: days.length,
+                              itemBuilder: (BuildContext context, int index) {
+                                final DateTime day = days[index];
+                                final bool isToday = day.day == now.day;
+                                final bool isSelected = day.day == now.day;
+                                Color color_terpilih = WhiteColor;
+                                BoxShadow shadow_terpilih = boxShadow;
 
-              return Container(
-                  margin: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                  width: 250, // Lebar card
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(16.0),
-                    gradient: LinearGradient(
-                      colors: gradients[index],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
+                                if (isToday) {
+                                  color_terpilih = AccentColor;
+                                  shadow_terpilih = boxShadowAccent;
+                                }
+
+                                for (var i = 0; i < arTambahDarah.length; i++) {
+                                  var tgl = arTambahDarah[i].toString();
+                                  var tgl2 = tgl.split("-");
+                                  var tgl3 = int.parse(tgl2[2]).toString() +
+                                      "-" +
+                                      int.parse(tgl2[1]).toString() +
+                                      "-" +
+                                      int.parse(tgl2[0]).toString();
+                                  var tgl_now = day.day.toString() +
+                                      "-" +
+                                      day.month.toString() +
+                                      "-" +
+                                      day.year.toString();
+                                  if (tgl3 == tgl_now) {
+                                    color_terpilih = PrimaryColor;
+                                    shadow_terpilih = boxShadowPrimary;
+                                  }
+                                  // print(tgl3 + "==" + tgl_now);
+                                }
+
+                                return Container(
+                                  margin: EdgeInsets.all(4),
+                                  decoration: BoxDecoration(
+                                    color: color_terpilih,
+                                    borderRadius: BorderRadius.circular(16),
+                                    boxShadow: [shadow_terpilih],
+                                  ),
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Text(
+                                        day.day.toString(),
+                                        style: TextStyle(
+                                          color: isSelected
+                                              ? Colors.white
+                                              : Colors.black,
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                        )
+                      ],
+                    )),
+                SizedBox(
+                  height: 16,
+                ),
+                Container(
+                  padding: EdgeInsets.symmetric(horizontal: 24),
+                  child: Text(
+                    'VIDEO EDUKASI : ',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
                     ),
-                    image: DecorationImage(
-                      image: NetworkImage(data[index]['url']),
-                      fit: BoxFit.cover,
-                    ),
-                    boxShadow: [boxShadowPrimary],
                   ),
-                  child: Container(
-                    padding: EdgeInsets.only(left: 8, right: 8),
+                ),
+                Container(
+                    margin: EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                    padding: EdgeInsets.all(4),
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(16.0),
-                      color: ThirdColor.withOpacity(0.6),
+                      boxShadow: [boxShadowPrimary],
                     ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.start,
-                      children: [
-                        // Gambar dari asset
-                        Expanded(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            children: [
-                              Container(
-                                alignment: Alignment.center,
-                                child: Text(
-                                  data[index][
-                                      'judul_artikel'], // Ganti dengan deskripsi yang sesuai
-                                  style: TextStyle(
-                                    color:
-                                        TextColorLight, // Warna teks pada latar belakang gradient
-                                    fontSize: 16.0,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                  textAlign: TextAlign.center,
-                                ),
+                    child: YoutubePlayerBuilder(
+                      // YoutubePlayerBuilder
+                      player: YoutubePlayer(
+                        controller: _playercontroller,
+                        showVideoProgressIndicator: true,
+                        progressIndicatorColor: Colors.blueAccent,
+                        topActions: <Widget>[
+                          const SizedBox(width: 8.0),
+                          Expanded(
+                            child: Text(
+                              _playercontroller.metadata.title,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 18.0,
                               ),
-                              // Tambahkan widget lainnya di sini jika diperlukan
-                            ],
-                          ),
-                        ),
-                        SizedBox(width: 10), // Spasi antara gambar dan judul
-                        Container(
-                          width: 90, // Lebar gambar
-                          height: 90, // Tinggi gambar
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(24),
-                            child: Image.network(
-                              data[index]['url'],
-                              fit: BoxFit.cover,
+                              overflow: TextOverflow.ellipsis,
+                              maxLines: 1,
                             ),
                           ),
-                        ),
-                      ],
+                          IconButton(
+                            icon: const Icon(
+                              Icons.settings,
+                              color: Colors.white,
+                              size: 25.0,
+                            ),
+                            onPressed: () {
+                              print('Settings Tapped!');
+                              _playercontroller.play();
+                            },
+                          ),
+                        ],
+                        onReady: () {
+                          print('Player is ready.');
+                        },
+                      ),
+                      builder: (context, player) {
+                        return Column(
+                          children: [
+                            // some widgets
+                            player,
+                            //some other widgets
+                          ],
+                        );
+                      },
+                    )),
+                SizedBox(
+                  height: 10,
+                ),
+                Container(
+                  padding: EdgeInsets.symmetric(horizontal: 24),
+                  child: Text(
+                    'ARTIKER TERBARU : ',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
                     ),
-                  ));
-            },
-          ),
-        ],
-      ),
+                  ),
+                ),
+                ListView.builder(
+                  shrinkWrap: true,
+                  physics: NeverScrollableScrollPhysics(),
+                  itemCount: data.length, // Jumlah card yang ingin ditampilkan
+                  scrollDirection:
+                      Axis.vertical, // Untuk menggeser card ke samping
+                  itemBuilder: (BuildContext context, int index) {
+                    // Daftar warna gradient yang berbeda
+                    List<List<Color>> gradients = [
+                      [PrimaryColor, Colors.white],
+                      [SecondaryColor, Colors.white],
+                      [ThirdColor, Colors.white],
+                      [PrimaryColor, Colors.white],
+                      [SecondaryColor, Colors.white],
+                    ];
+
+                    return Container(
+                        margin:
+                            EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                        width: 250, // Lebar card
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(16.0),
+                          gradient: LinearGradient(
+                            colors: gradients[index],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          image: DecorationImage(
+                            image: NetworkImage(data[index]['url']),
+                            fit: BoxFit.cover,
+                          ),
+                          boxShadow: [boxShadowPrimary],
+                        ),
+                        child: Container(
+                          padding: EdgeInsets.only(left: 8, right: 8),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(16.0),
+                            color: ThirdColor.withOpacity(0.6),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.start,
+                            children: [
+                              // Gambar dari asset
+                              Expanded(
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  crossAxisAlignment: CrossAxisAlignment.center,
+                                  children: [
+                                    Container(
+                                      alignment: Alignment.center,
+                                      child: Text(
+                                        data[index][
+                                            'judul_artikel'], // Ganti dengan deskripsi yang sesuai
+                                        style: TextStyle(
+                                          color:
+                                              TextColorLight, // Warna teks pada latar belakang gradient
+                                          fontSize: 16.0,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                        textAlign: TextAlign.center,
+                                      ),
+                                    ),
+                                    // Tambahkan widget lainnya di sini jika diperlukan
+                                  ],
+                                ),
+                              ),
+                              SizedBox(
+                                  width: 10), // Spasi antara gambar dan judul
+                              Container(
+                                width: 90, // Lebar gambar
+                                height: 90, // Tinggi gambar
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(24),
+                                  child: Image.network(
+                                    data[index]['url'],
+                                    fit: BoxFit.cover,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ));
+                  },
+                ),
+              ],
+            ),
     );
   }
 }
