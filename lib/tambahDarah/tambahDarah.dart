@@ -352,6 +352,7 @@ class _InputDarahState extends State<InputDarah> {
                                       ElevatedButton(
                                         onPressed: () {
                                           // Aksi saat tombol "Belum" ditekan
+                                          _showPopup(context);
                                         },
                                         style: ElevatedButton.styleFrom(
                                           backgroundColor: SecondaryColor,
@@ -493,6 +494,26 @@ class _InputDarahState extends State<InputDarah> {
           ),
         ],
       ),
+    );
+  }
+
+  void _showPopup(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text("Notification"),
+          content: Text("This is a pop-up notification."),
+          actions: [
+            TextButton(
+              child: Text("OK"),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+          ],
+        );
+      },
     );
   }
 }
