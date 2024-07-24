@@ -6,12 +6,14 @@ import 'dart:convert';
 
 import 'package:monitoringobat/bloc/nav/bottom_nav.dart';
 import 'package:http/http.dart' as http;
+import 'package:monitoringobat/components/popup.dart';
 import 'package:monitoringobat/util/colors.dart';
 import 'package:monitoringobat/util/core.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:table_calendar/table_calendar.dart';
 
 import '../model/user.dart';
+import '../components/popup.dart';
 
 class InputDarah extends StatefulWidget {
   @override
@@ -138,6 +140,8 @@ class _InputDarahState extends State<InputDarah> {
     print('Res: ${response.statusCode}, ${response.body}');
     if (response.statusCode == 200) {
       fetchDataDarah();
+      showPopup(
+          context, "Berhasil", "Anda Sudah minum tablet tambah darah hari ini");
     } else {
       // Handle error here, e.g., show an error message to the user
       print('Error: ${response.statusCode}, ${response.body}');
@@ -348,20 +352,6 @@ class _InputDarahState extends State<InputDarah> {
                                                 color: Colors.white,
                                                 fontWeight: FontWeight.bold)),
                                       ),
-                                      SizedBox(width: 30),
-                                      ElevatedButton(
-                                        onPressed: () {
-                                          // Aksi saat tombol "Belum" ditekan
-                                          _showPopup(context);
-                                        },
-                                        style: ElevatedButton.styleFrom(
-                                          backgroundColor: SecondaryColor,
-                                        ),
-                                        child: Text('BELUM',
-                                            style: TextStyle(
-                                                color: Colors.white,
-                                                fontWeight: FontWeight.bold)),
-                                      ),
                                     ],
                                   ),
                                 ],
@@ -494,26 +484,6 @@ class _InputDarahState extends State<InputDarah> {
           ),
         ],
       ),
-    );
-  }
-
-  void _showPopup(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text("Notification"),
-          content: Text("This is a pop-up notification."),
-          actions: [
-            TextButton(
-              child: Text("OK"),
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-            ),
-          ],
-        );
-      },
     );
   }
 }
