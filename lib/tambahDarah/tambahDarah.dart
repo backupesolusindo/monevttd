@@ -2,6 +2,7 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:lottie/lottie.dart';
 import 'dart:convert';
 
 import 'package:monitoringobat/bloc/nav/bottom_nav.dart';
@@ -21,6 +22,7 @@ class InputDarah extends StatefulWidget {
 }
 
 class _InputDarahState extends State<InputDarah> {
+  bool isLoading = true;
   String currentDate = DateFormat('yyyy-MM-dd').format(DateTime.now());
   String clientId = "PKL2023";
   String clientSecret = "PKLSERU";
@@ -140,8 +142,8 @@ class _InputDarahState extends State<InputDarah> {
     print('Res: ${response.statusCode}, ${response.body}');
     if (response.statusCode == 200) {
       fetchDataDarah();
-      showPopup(
-          context, "Berhasil", "Anda Sudah minum tablet tambah darah hari ini");
+      showPopup(context, "Berhasil",
+          "Anda Sudah minum tablet tambah darah hari ini", null);
     } else {
       // Handle error here, e.g., show an error message to the user
       print('Error: ${response.statusCode}, ${response.body}');
@@ -149,6 +151,9 @@ class _InputDarahState extends State<InputDarah> {
   }
 
   Future<void> fetchDataDarah() async {
+    setState(() {
+      isLoading = true;
+    });
     final Uri uri =
         Uri.parse(base_url + 'api/Darah/tambahdarahall?id_user=$ID');
     final response = await http.get(uri);
@@ -163,6 +168,7 @@ class _InputDarahState extends State<InputDarah> {
 
       int no = 0;
       setState(() {
+        isLoading = false;
         var datenow = DateTime.now();
         var angkatgl = datenow.day.toString();
         var angkabln = datenow.month.toString();
@@ -203,287 +209,302 @@ class _InputDarahState extends State<InputDarah> {
     return Scaffold(
       bottomNavigationBar: const BottomNavBar(selected: 4),
       backgroundColor: BackgroundColor,
-      body: Stack(
-        children: [
-          SafeArea(
-            child: Container(
-              width: size.width,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  SingleChildScrollView(
-                    child: Container(
-                      padding: const EdgeInsets.all(20.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Text(
-                                'Tambah Darah Hari Ini',
-                                style: TextStyle(
-                                  color: TextColordark,
-                                  fontSize: 24,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              Expanded(
-                                flex: 1,
-                                child: Container(),
-                              ),
-                              Image.asset(
-                                'assets/images/calendar.png',
-                                width: 30.0,
-                                height: 30.0,
-                              ),
-                            ],
-                          ),
-                          // Tambahkan komponen UI lainnya di sini
-                          SizedBox(
-                            height:
-                                20, // Tambahkan jarak antara teks dan Container
-                          ),
-                          if (!_isBelumMinum)
-                            Container(
-                              padding: EdgeInsets.all(
-                                  16.0), // Padding pada Container
-                              decoration: BoxDecoration(
-                                color: Colors
-                                    .white, // Warna latar belakang Container
-                                borderRadius: BorderRadius.circular(
-                                    10.0), // Radius sudut sebesar 10
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.grey.withOpacity(
-                                        0.5), // Warna shadow abu-abu
-                                    spreadRadius:
-                                        5, // Seberapa jauh shadow menyebar
-                                    blurRadius: 7, // Tingkat keburaman shadow
-                                    offset: Offset(0, 3), // Posisi shadow
-                                  ),
-                                ],
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'Tanggal : ' + tanggal.format(now),
-                                    style: TextStyle(
-                                      fontSize: 15,
-                                      color: Colors.black,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                  Text(
-                                    txtNama,
-                                    style: TextStyle(
-                                      fontSize: 15,
-                                      color: Colors.deepOrange,
-                                    ),
-                                  ),
-                                  Text(
-                                    'Anda sudah minum tablet tambah darah hari ini',
-                                    style: TextStyle(
-                                      fontSize: 15,
-                                      color: Colors.black,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          if (_isBelumMinum)
-                            Container(
-                              padding: EdgeInsets.all(
-                                  16.0), // Padding pada Container
-                              decoration: BoxDecoration(
-                                color: Colors
-                                    .white, // Warna latar belakang Container
-                                borderRadius: BorderRadius.circular(
-                                    10.0), // Radius sudut sebesar 10
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.grey.withOpacity(
-                                        0.5), // Warna shadow abu-abu
-                                    spreadRadius:
-                                        5, // Seberapa jauh shadow menyebar
-                                    blurRadius: 7, // Tingkat keburaman shadow
-                                    offset: Offset(0, 3), // Posisi shadow
-                                  ),
-                                ],
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'Tanggal : ' + tanggal.format(now),
-                                    style: TextStyle(
-                                      fontSize: 15,
-                                      color: Colors.black,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                  Text(
-                                    txtNama,
-                                    style: TextStyle(
-                                      fontSize: 15,
-                                      color: Colors.deepOrange,
-                                    ),
-                                  ),
-                                  Text(
-                                    'Apakah anda sudah minum tablet tambah darah?',
-                                    style: TextStyle(
-                                      fontSize: 15,
-                                      color: Colors.black,
-                                    ),
-                                  ),
-                                  Row(
-                                    children: [
-                                      SizedBox(width: 70),
-                                      ElevatedButton(
-                                        onPressed: () {
-                                          // Aksi saat tombol "Sudah" ditekan
-                                          _saveDataToDatabase();
-                                        },
-                                        style: ElevatedButton.styleFrom(
-                                          backgroundColor: AccentColor,
-                                        ),
-                                        child: Text('SUDAH',
-                                            style: TextStyle(
-                                                color: Colors.white,
-                                                fontWeight: FontWeight.bold)),
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            ),
-                          SizedBox(
-                            height:
-                                32, // Tambahkan jarak antara teks dan Container
-                          ),
-                          Text("KALENDER TTD :",
-                              style: TextStyle(
-                                  color: PrimaryColor,
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.bold)),
-                          Center(
-                            child: Text(
-                              monthYearFormat.format(now).toUpperCase(),
-                              style: TextStyle(
-                                color: PrimaryColor,
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                          Center(
-                            child: Container(
-                              width: size.width * 0.9,
-                              child: GridView.builder(
-                                shrinkWrap: true,
-                                physics: NeverScrollableScrollPhysics(),
-                                gridDelegate:
-                                    SliverGridDelegateWithFixedCrossAxisCount(
-                                  crossAxisCount: 7, // 7 days in a week
-                                ),
-                                itemCount: weekdays.length,
-                                itemBuilder: (BuildContext context, int index) {
-                                  return Center(
-                                    child: Text(
-                                      weekdays[index],
+      body: (isLoading)
+          ? Center(
+              child: Lottie.asset('assets/lottie/main_loading.json'),
+            )
+          : Stack(
+              children: [
+                SafeArea(
+                  child: Container(
+                    width: size.width,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        SingleChildScrollView(
+                          child: Container(
+                            padding: const EdgeInsets.all(20.0),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Text(
+                                      'Tambah Darah Hari Ini',
                                       style: TextStyle(
+                                        color: TextColordark,
+                                        fontSize: 24,
                                         fontWeight: FontWeight.bold,
-                                        fontSize: 14,
                                       ),
                                     ),
-                                  );
-                                },
-                              ),
-                            ),
-                          ),
-                          Center(
-                            child: Container(
-                              width: size.width * 0.9,
-                              child: GridView.builder(
-                                shrinkWrap: true,
-                                physics: NeverScrollableScrollPhysics(),
-                                gridDelegate:
-                                    SliverGridDelegateWithFixedCrossAxisCount(
-                                  crossAxisCount: 7, // 7 days in a week
+                                    Expanded(
+                                      flex: 1,
+                                      child: Container(),
+                                    ),
+                                    Image.asset(
+                                      'assets/images/calendar.png',
+                                      width: 30.0,
+                                      height: 30.0,
+                                    ),
+                                  ],
                                 ),
-                                itemCount: days.length,
-                                itemBuilder: (BuildContext context, int index) {
-                                  final DateTime day = days[index];
-                                  final bool isToday = day.day == now.day;
-                                  final bool isSelected = day.day == now.day;
-                                  Color color_terpilih = WhiteColor;
-                                  BoxShadow shadow_terpilih = boxShadow;
-
-                                  if (isToday) {
-                                    color_terpilih = AccentColor;
-                                    shadow_terpilih = boxShadowAccent;
-                                  }
-
-                                  for (var i = 0;
-                                      i < arTambahDarah.length;
-                                      i++) {
-                                    var tgl = arTambahDarah[i].toString();
-                                    var tgl2 = tgl.split("-");
-                                    var tgl3 = int.parse(tgl2[2]).toString() +
-                                        "-" +
-                                        int.parse(tgl2[1]).toString() +
-                                        "-" +
-                                        int.parse(tgl2[0]).toString();
-                                    var tgl_now = day.day.toString() +
-                                        "-" +
-                                        day.month.toString() +
-                                        "-" +
-                                        day.year.toString();
-                                    if (tgl3 == tgl_now) {
-                                      color_terpilih = PrimaryColor;
-                                      shadow_terpilih = boxShadowPrimary;
-                                    }
-                                    // print(tgl3 + "==" + tgl_now);
-                                  }
-
-                                  return Container(
-                                    margin: EdgeInsets.all(4),
+                                // Tambahkan komponen UI lainnya di sini
+                                SizedBox(
+                                  height:
+                                      20, // Tambahkan jarak antara teks dan Container
+                                ),
+                                if (!_isBelumMinum)
+                                  Container(
+                                    padding: EdgeInsets.all(
+                                        16.0), // Padding pada Container
                                     decoration: BoxDecoration(
-                                      color: color_terpilih,
-                                      borderRadius: BorderRadius.circular(16),
-                                      boxShadow: [shadow_terpilih],
+                                      color: Colors
+                                          .white, // Warna latar belakang Container
+                                      borderRadius: BorderRadius.circular(
+                                          10.0), // Radius sudut sebesar 10
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.grey.withOpacity(
+                                              0.5), // Warna shadow abu-abu
+                                          spreadRadius:
+                                              5, // Seberapa jauh shadow menyebar
+                                          blurRadius:
+                                              7, // Tingkat keburaman shadow
+                                          offset: Offset(0, 3), // Posisi shadow
+                                        ),
+                                      ],
                                     ),
                                     child: Column(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.center,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
                                         Text(
-                                          day.day.toString(),
+                                          'Tanggal : ' + tanggal.format(now),
                                           style: TextStyle(
-                                            color: isSelected
-                                                ? Colors.white
-                                                : Colors.black,
-                                            fontSize: 12,
+                                            fontSize: 15,
+                                            color: Colors.black,
                                             fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                        Text(
+                                          txtNama,
+                                          style: TextStyle(
+                                            fontSize: 15,
+                                            color: Colors.deepOrange,
+                                          ),
+                                        ),
+                                        Text(
+                                          'Anda sudah minum tablet tambah darah hari ini',
+                                          style: TextStyle(
+                                            fontSize: 15,
+                                            color: Colors.black,
                                           ),
                                         ),
                                       ],
                                     ),
-                                  );
-                                },
-                              ),
+                                  ),
+                                if (_isBelumMinum)
+                                  Container(
+                                    padding: EdgeInsets.all(
+                                        16.0), // Padding pada Container
+                                    decoration: BoxDecoration(
+                                      color: Colors
+                                          .white, // Warna latar belakang Container
+                                      borderRadius: BorderRadius.circular(
+                                          10.0), // Radius sudut sebesar 10
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.grey.withOpacity(
+                                              0.5), // Warna shadow abu-abu
+                                          spreadRadius:
+                                              5, // Seberapa jauh shadow menyebar
+                                          blurRadius:
+                                              7, // Tingkat keburaman shadow
+                                          offset: Offset(0, 3), // Posisi shadow
+                                        ),
+                                      ],
+                                    ),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          'Tanggal : ' + tanggal.format(now),
+                                          style: TextStyle(
+                                            fontSize: 15,
+                                            color: Colors.black,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                        Text(
+                                          txtNama,
+                                          style: TextStyle(
+                                            fontSize: 15,
+                                            color: Colors.deepOrange,
+                                          ),
+                                        ),
+                                        Text(
+                                          'Apakah anda sudah minum tablet tambah darah?',
+                                          style: TextStyle(
+                                            fontSize: 15,
+                                            color: Colors.black,
+                                          ),
+                                        ),
+                                        Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
+                                          children: [
+                                            ElevatedButton(
+                                              onPressed: () {
+                                                // Aksi saat tombol "Sudah" ditekan
+                                                _saveDataToDatabase();
+                                              },
+                                              style: ElevatedButton.styleFrom(
+                                                backgroundColor: AccentColor,
+                                              ),
+                                              child: Text('SUDAH MINUM',
+                                                  style: TextStyle(
+                                                      color: Colors.white,
+                                                      fontWeight:
+                                                          FontWeight.bold)),
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                SizedBox(
+                                  height:
+                                      32, // Tambahkan jarak antara teks dan Container
+                                ),
+                                Text("KALENDER TTD :",
+                                    style: TextStyle(
+                                        color: PrimaryColor,
+                                        fontSize: 20,
+                                        fontWeight: FontWeight.bold)),
+                                Center(
+                                  child: Text(
+                                    monthYearFormat.format(now).toUpperCase(),
+                                    style: TextStyle(
+                                      color: PrimaryColor,
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                                Center(
+                                  child: Container(
+                                    width: size.width * 0.9,
+                                    child: GridView.builder(
+                                      shrinkWrap: true,
+                                      physics: NeverScrollableScrollPhysics(),
+                                      gridDelegate:
+                                          SliverGridDelegateWithFixedCrossAxisCount(
+                                        crossAxisCount: 7, // 7 days in a week
+                                      ),
+                                      itemCount: weekdays.length,
+                                      itemBuilder:
+                                          (BuildContext context, int index) {
+                                        return Center(
+                                          child: Text(
+                                            weekdays[index],
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 14,
+                                            ),
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                  ),
+                                ),
+                                Center(
+                                  child: Container(
+                                    width: size.width * 0.9,
+                                    child: GridView.builder(
+                                      shrinkWrap: true,
+                                      physics: NeverScrollableScrollPhysics(),
+                                      gridDelegate:
+                                          SliverGridDelegateWithFixedCrossAxisCount(
+                                        crossAxisCount: 7, // 7 days in a week
+                                      ),
+                                      itemCount: days.length,
+                                      itemBuilder:
+                                          (BuildContext context, int index) {
+                                        final DateTime day = days[index];
+                                        final bool isToday = day.day == now.day;
+                                        final bool isSelected =
+                                            day.day == now.day;
+                                        Color color_terpilih = WhiteColor;
+                                        BoxShadow shadow_terpilih = boxShadow;
+
+                                        if (isToday) {
+                                          color_terpilih = AccentColor;
+                                          shadow_terpilih = boxShadowAccent;
+                                        }
+
+                                        for (var i = 0;
+                                            i < arTambahDarah.length;
+                                            i++) {
+                                          var tgl = arTambahDarah[i].toString();
+                                          var tgl2 = tgl.split("-");
+                                          var tgl3 = int.parse(tgl2[2])
+                                                  .toString() +
+                                              "-" +
+                                              int.parse(tgl2[1]).toString() +
+                                              "-" +
+                                              int.parse(tgl2[0]).toString();
+                                          var tgl_now = day.day.toString() +
+                                              "-" +
+                                              day.month.toString() +
+                                              "-" +
+                                              day.year.toString();
+                                          if (tgl3 == tgl_now) {
+                                            color_terpilih = PrimaryColor;
+                                            shadow_terpilih = boxShadowPrimary;
+                                          }
+                                          // print(tgl3 + "==" + tgl_now);
+                                        }
+
+                                        return Container(
+                                          margin: EdgeInsets.all(4),
+                                          decoration: BoxDecoration(
+                                            color: color_terpilih,
+                                            borderRadius:
+                                                BorderRadius.circular(16),
+                                            boxShadow: [shadow_terpilih],
+                                          ),
+                                          child: Column(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.center,
+                                            children: [
+                                              Text(
+                                                day.day.toString(),
+                                                style: TextStyle(
+                                                  color: isSelected
+                                                      ? Colors.white
+                                                      : Colors.black,
+                                                  fontSize: 12,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                  ),
+                                )
+                              ],
                             ),
-                          )
-                        ],
-                      ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
-          ),
-        ],
-      ),
     );
   }
 }

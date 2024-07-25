@@ -4,6 +4,7 @@ import 'package:fluttertoast/fluttertoast.dart';
 import 'package:get/get.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
+import 'package:lottie/lottie.dart';
 import 'package:monitoringobat/bloc/nav/bottom_nav.dart';
 import 'package:monitoringobat/kalori/kalori.dart';
 import 'package:monitoringobat/model/user.dart';
@@ -11,6 +12,7 @@ import 'package:monitoringobat/util/colors.dart';
 import 'package:modal_bottom_sheet/modal_bottom_sheet.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../components/popup.dart';
 import '../util/core.dart';
 
 class Kuisioner extends StatefulWidget {
@@ -24,16 +26,15 @@ class _KuisionerState extends State<Kuisioner> {
   String clientId = "PKL2023";
   String clientSecret = "PKLSERU";
   String tokenUrl = base_url + "api/Token/token";
-  String apiUrl = base_url + "api/BeratBadan/Kuisioner";
   String accessToken = "";
   bool isSearching = false;
   int cardValue = 0;
   String Id = '';
 
   int selectIndex = 0;
-  List<int> id_pertanyaan = [1, 2, 3];
-  List<String> pertanyaan = ["aasdasdasd", "basdasdasd", "casdasdasd"];
-  List<int> jawaban = [0, 0, 0];
+  List<int> id_pertanyaan = [];
+  List<String> pertanyaan = [];
+  List<int> jawaban = [];
   bool isForward = true;
   bool isKirim = false;
   bool isLoading = true;
@@ -55,7 +56,7 @@ class _KuisionerState extends State<Kuisioner> {
     await Future.wait([
       loadUserData(),
       getToken(),
-      SelesaiLoading(),
+      getPertanyaan(),
     ]);
   }
 
@@ -109,8 +110,46 @@ class _KuisionerState extends State<Kuisioner> {
     }
   }
 
+  Future<void> getPertanyaan() async {
+    final response = await http.get(
+      Uri.parse(base_url + 'api/Question/Pertanyaan'),
+      headers: {
+        'Authorization':
+            'Bearer $accessToken', // Use the access token obtained from getToken()
+      },
+    );
+
+    if (response.statusCode == 200) {
+      var json = jsonDecode(response.body);
+      print(json['response']);
+      if (json['status'] == 200) {
+        List<dynamic> data = json['response'];
+        List<int> id_pertanyaan = [];
+        List<String> pertanyaan = [];
+        List<int> jawaban = [];
+        data.forEach((element) {
+          id_pertanyaan.add(int.tryParse(element['id_pertanyaan'])!);
+          pertanyaan.add(element['pertanyaan']);
+          jawaban.add(0);
+        });
+        setState(() {
+          this.id_pertanyaan = id_pertanyaan;
+          this.pertanyaan = pertanyaan;
+          this.jawaban = jawaban;
+        });
+      } else {
+        throw Exception('Failed to load data');
+      }
+      SelesaiLoading();
+    } else {
+      throw Exception('Failed to load data');
+      SelesaiLoading();
+    }
+  }
+
   Future<void> kirimData() async {
     // log
+    print('Kirim Data');
     print('ID User: $Id');
     print('id_pertanyaan: $id_pertanyaan');
     print('Jawaban: $jawaban');
@@ -133,31 +172,28 @@ class _KuisionerState extends State<Kuisioner> {
       }
     });
 
-    if (jawaban.contains(0)) {
+    if (!jawaban.contains(0)) {
       print("send");
       try {
         var response = await http.post(
-          Uri.parse(apiUrl),
+          Uri.parse(base_url + "api/Question/SimpanJawaban"),
           headers: {
             'Authorization': 'Bearer $accessToken',
             'Content-Type': 'application/json',
           },
           body: jsonEncode({
             'id_user': Id,
+            'id_pertanyaan': id_pertanyaan,
+            'jawaban': jawaban,
           }),
         );
 
         print('Response Simpan Data');
         print(response.body);
         if (response.statusCode == 200) {
-          Fluttertoast.showToast(
-            msg: 'Berhasil Kirim Data',
-            toastLength: Toast.LENGTH_LONG,
-            gravity: ToastGravity.BOTTOM,
-            backgroundColor: Colors.green,
-            textColor: Colors.white,
-          );
+          var json = jsonDecode(response.body);
           Navigator.pop(context);
+          showPopup(context, "Berhasil", json['message'], null);
         } else {
           print('Gagal mengirim data: ${response.statusCode}');
         }
@@ -175,9 +211,7 @@ class _KuisionerState extends State<Kuisioner> {
           backgroundColor: PrimaryColor,
         ),
         body: (isLoading)
-            ? Center(
-                child: CircularProgressIndicator(),
-              )
+            ? Center(child: Lottie.asset('assets/lottie/main_loading.json'))
             : ListView(
                 children: [
                   Row(

@@ -6,6 +6,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
 import 'package:intl/intl.dart';
+import 'package:lottie/lottie.dart';
 import 'package:monitoringobat/FAQ/listfaq.dart';
 import 'package:monitoringobat/Kuisioner/Kuisioner_screen.dart';
 import 'package:monitoringobat/PedomanGizi/PdfPedomanGizi.dart';
@@ -337,7 +338,7 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
       backgroundColor: BackgroundColor,
       body: isLoaded
           ? Center(
-              child: CircularProgressIndicator(),
+              child: Lottie.asset('assets/lottie/main_loading.json'),
             )
           : ListView(
               children: [
