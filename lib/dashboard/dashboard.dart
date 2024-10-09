@@ -10,6 +10,7 @@ import 'package:lottie/lottie.dart';
 import 'package:monitoringobat/FAQ/listfaq.dart';
 import 'package:monitoringobat/Kuisioner/Kuisioner_screen.dart';
 import 'package:monitoringobat/PedomanGizi/PdfPedomanGizi.dart';
+import 'package:monitoringobat/dashboard/baca_artikel.dart';
 import 'package:monitoringobat/util/colors.dart';
 import 'package:marquee/marquee.dart';
 import 'package:page_transition/page_transition.dart';
@@ -757,7 +758,7 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
                     padding: EdgeInsets.all(4),
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(16.0),
-                      boxShadow: [boxShadowPrimary],
+                      boxShadow: [boxShadow],
                     ),
                     child: YoutubePlayerBuilder(
                       // YoutubePlayerBuilder
@@ -820,7 +821,8 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
                 ListView.builder(
                   shrinkWrap: true,
                   physics: NeverScrollableScrollPhysics(),
-                  itemCount: data.length, // Jumlah card yang ingin ditampilkan
+                  itemCount:
+                      articles.length, // Jumlah card yang ingin ditampilkan
                   scrollDirection:
                       Axis.vertical, // Untuk menggeser card ke samping
                   itemBuilder: (BuildContext context, int index) {
@@ -833,72 +835,83 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
                       [SecondaryColor, Colors.white],
                     ];
 
-                    return Container(
-                        margin:
-                            EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                        width: 250, // Lebar card
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(16.0),
-                          gradient: LinearGradient(
-                            colors: gradients[index],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
+                    return GestureDetector(
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => BacaArtikel(
+                                title: articles[index]['judul'],
+                                description: articles[index]['konten'],
+                                image: articles[index]['gambar_artikel']),
                           ),
-                          image: DecorationImage(
-                            image: NetworkImage(data[index]['url']),
-                            fit: BoxFit.cover,
-                          ),
-                          boxShadow: [boxShadowPrimary],
-                        ),
-                        child: Container(
-                          padding: EdgeInsets.only(left: 8, right: 8),
+                        );
+                      },
+                      child: Container(
+                          margin: EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 16),
+                          width: 250, // Lebar card
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(16.0),
-                            color: ThirdColor.withOpacity(0.6),
+                            image: DecorationImage(
+                              image: NetworkImage(
+                                  articles[index]['gambar_artikel']),
+                              fit: BoxFit.cover,
+                            ),
+                            // boxShadow: [boxShadowPrimary],
                           ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.start,
-                            children: [
-                              // Gambar dari asset
-                              Expanded(
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  crossAxisAlignment: CrossAxisAlignment.center,
-                                  children: [
-                                    Container(
-                                      alignment: Alignment.center,
-                                      child: Text(
-                                        data[index][
-                                            'judul_artikel'], // Ganti dengan deskripsi yang sesuai
-                                        style: TextStyle(
-                                          color:
-                                              TextColorLight, // Warna teks pada latar belakang gradient
-                                          fontSize: 16.0,
-                                          fontWeight: FontWeight.bold,
+                          child: Container(
+                            padding: EdgeInsets.only(left: 8, right: 8),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(16.0),
+                              color: Colors.black.withOpacity(0.4),
+                              boxShadow: [boxShadow],
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.start,
+                              children: [
+                                // Gambar dari asset
+                                Expanded(
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.center,
+                                    children: [
+                                      Container(
+                                        alignment: Alignment.center,
+                                        child: Text(
+                                          articles[index][
+                                              'judul'], // Ganti dengan deskripsi yang sesuai
+                                          style: TextStyle(
+                                            color:
+                                                TextColorLight, // Warna teks pada latar belakang gradient
+                                            fontSize: 16.0,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                          textAlign: TextAlign.center,
                                         ),
-                                        textAlign: TextAlign.center,
                                       ),
-                                    ),
-                                    // Tambahkan widget lainnya di sini jika diperlukan
-                                  ],
-                                ),
-                              ),
-                              SizedBox(
-                                  width: 10), // Spasi antara gambar dan judul
-                              Container(
-                                width: 90, // Lebar gambar
-                                height: 90, // Tinggi gambar
-                                child: ClipRRect(
-                                  borderRadius: BorderRadius.circular(24),
-                                  child: Image.network(
-                                    data[index]['url'],
-                                    fit: BoxFit.cover,
+                                      // Tambahkan widget lainnya di sini jika diperlukan
+                                    ],
                                   ),
                                 ),
-                              ),
-                            ],
-                          ),
-                        ));
+                                SizedBox(
+                                    width: 10), // Spasi antara gambar dan judul
+                                Container(
+                                  width: 90, // Lebar gambar
+                                  height: 90, // Tinggi gambar
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(24),
+                                    child: Image.network(
+                                      articles[index]['gambar_artikel'],
+                                      fit: BoxFit.cover,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          )),
+                    );
                   },
                 ),
               ],

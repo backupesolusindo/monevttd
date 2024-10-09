@@ -81,19 +81,29 @@ class _BeratBadanState extends State<BeratBadan> {
 
     if (response.statusCode == 200) {
       final jsonResponse = json.decode(response.body);
-      // print(jsonResponse);
       setState(() {
         isLoading = false;
         var data = jsonResponse['response']['dataGraf'];
         LabelData = jsonResponse['response']['dataLabel'];
         for (var i = 0; i < data.length; i++) {
-          if (data[i]['bb'] > 0) {
-            arBeratBadan.add(FlSpot(i.toDouble(), double.parse(data[i]['bb'])));
+          print(data[i]);
+          double bb = 0;
+          double hb = 0;
+          if (data[i]['bb'] != null && data[i]['bb'] != "") {
+            bb = double.parse(data[i]['bb']);
           }
-          if (data[i]['hb'] > 0) {
-            arHb.add(FlSpot(i.toDouble(), double.parse(data[i]['hb'])));
+          if (data[i]['hb'] != null && data[i]['hb'] != "") {
+            hb = double.parse(data[i]['hb']);
+          }
+          if (bb > 0) {
+            arBeratBadan.add(FlSpot(i.toDouble(), bb));
+          }
+          if (hb > 0) {
+            arHb.add(FlSpot(i.toDouble(), hb));
           }
         }
+        print(arBeratBadan);
+        print(arHb);
       });
     } else {
       setState(() {
