@@ -196,7 +196,7 @@ class _RiwayatState extends State<Riwayat> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      bottomNavigationBar: const BottomNavBar(selected: 2),
+      bottomNavigationBar: const BottomNavBar(selected: 1),
       body: SingleChildScrollView(
         child: Stack(children: [
           Container(
