@@ -5,7 +5,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:monitoringobat/util/colors.dart';
 
 class BottomNavBar extends StatefulWidget {
-  const BottomNavBar({super.key, required this.selected});
+  const BottomNavBar({Key? key, this.selected = 0}) : super(key: key);
 
   final int selected;
 
@@ -14,114 +14,129 @@ class BottomNavBar extends StatefulWidget {
 }
 
 class _BottomNavBarState extends State<BottomNavBar> {
+  late int _selectedIndex;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedIndex = widget.selected;
+  }
+
+  void _onItemTapped(int index) {
+    setState(() {
+      _selectedIndex = index;
+    });
+    switch (index) {
+      case 0:
+        Navigator.pushReplacementNamed(context, '/dashboard');
+        break;
+      case 1:
+        Navigator.pushReplacementNamed(context, '/riwayat');
+        break;
+      case 2:
+        Navigator.pushReplacementNamed(context, '/notifikasi');
+        break;
+      case 3:
+        Navigator.pushReplacementNamed(context, '/menu');
+        break;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 80,
-      padding: EdgeInsets.only(top: 16, bottom: 8),
+      height: 60,
       decoration: BoxDecoration(
         color: Colors.white,
-        boxShadow: [boxShadow],
-        borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(24),
-          topRight: Radius.circular(24),
-        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.3),
+            spreadRadius: 1,
+            blurRadius: 5,
+            offset: Offset(0, -3),
+          ),
+        ],
       ),
-      child: Container(
-        padding: EdgeInsets.all(0),
-        width: MediaQuery.of(context).size.width,
-        decoration: BoxDecoration(
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _buildNavItem(0, Icons.home_rounded, ''),
+              _buildNavItem(1, Icons.history, ''),
+              _buildNavItem(2, Icons.notifications, ''),
+              _buildNavItem(3, Icons.menu, ''),
+            ],
+          ),
+          Positioned(
+            top: -30,
+            left: MediaQuery.of(context).size.width / 4 * _selectedIndex,
+            child: _buildSelectedItem(_selectedIndex),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNavItem(int index, IconData icon, String label) {
+    bool isSelected = _selectedIndex == index;
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => _onItemTapped(index),
+        child: Container(
           color: Colors.transparent,
-        ),
-        child: Row(
-          children: [
-            Expanded(
-                child: IconBottomBar(
-                    index: 0,
-                    label: 'Home',
-                    selected: widget.selected,
-                    icon: Icons.home_rounded,
-                    navigateTo: "/dashboard")),
-            Expanded(
-              child: IconBottomBar(
-                  index: 4,
-                  label: 'Darah',
-                  selected: widget.selected,
-                  icon: Icons.bloodtype,
-                  navigateTo: "/ttd"),
-            ),
-            Expanded(
-              child: IconBottomBar(
-                  index: 5,
-                  label: 'Berat Badan',
-                  selected: widget.selected,
-                  icon: Icons.monitor_weight_rounded,
-                  navigateTo: "/beratbadan"),
-            ),
-            Expanded(
-                child: IconBottomBar(
-                    index: 3,
-                    label: 'Profile',
-                    selected: widget.selected,
-                    icon: Icons.account_box,
-                    navigateTo: "/profile")),
-          ],
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              SizedBox(height: isSelected ? 30 : 0),
+              if (!isSelected) Icon(icon, color: Colors.grey),
+              SizedBox(height: 4),
+              Text(
+                label,
+                style: TextStyle(
+                  color: isSelected ? PrimaryColor : Colors.grey,
+                  fontSize: 12,
+                ),
+              ),
+              SizedBox(height: 8),
+            ],
+          ),
         ),
       ),
     );
   }
-}
 
-class IconBottomBar extends StatelessWidget {
-  // final String label;
-  final int index;
-  final int selected;
-  final IconData icon;
-  final String label;
-  final String navigateTo;
-  // final NavEvent navigateTo;
-  const IconBottomBar(
-      {super.key,
-      // required this.label,
-      required this.index,
-      required this.selected,
-      required this.icon,
-      required this.navigateTo,
-      required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () {
-        Navigator.pushReplacementNamed(context, navigateTo.toString());
-        // if (isUserLoggedIn || index == 0 || index == 1) {
-        // BlocProvider.of<NavBloc>(context).add(navigateTo);
-        // } else {
-        //   showNotLoggedInDialog(context);
-        // }
-      },
-      child: Container(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Container(
-                height: (selected == index) ? 32 : 28,
-                child: Icon(
-                  icon,
-                  color: (selected == index) ? PrimaryColor : Colors.grey,
-                )),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: (selected == index) ? 14 : 12,
-                fontWeight:
-                    (selected == index) ? FontWeight.w700 : FontWeight.w400,
-                color: (selected == index)
-                    ? PrimaryColor
-                    : Colors.grey.withOpacity(0.5),
+  Widget _buildSelectedItem(int index) {
+    List<IconData> icons = [
+      Icons.home_rounded,
+      Icons.history,
+      Icons.notifications,
+      Icons.menu,
+    ];
+    return Container(
+      width: MediaQuery.of(context).size.width / 4,
+      child: Center(
+        child: Container(
+          width: 60,
+          height: 60,
+          decoration: BoxDecoration(
+            color: PrimaryColor,
+            shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.blue.withOpacity(0.3),
+                spreadRadius: 2,
+                blurRadius: 5,
+                offset: Offset(0, 3),
               ),
-            )
-          ],
+            ],
+          ),
+          child: Icon(
+            icons[index],
+            color: Colors.white,
+            size: 30,
+          ),
         ),
       ),
     );
