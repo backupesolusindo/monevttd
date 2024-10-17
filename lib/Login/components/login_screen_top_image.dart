@@ -18,32 +18,33 @@ class LoginScreenTopImage extends StatelessWidget {
             width: 160,
             height: 160,
             decoration: BoxDecoration(
-              color: Colors.grey.withOpacity(0.23),
+              color: Colors.white,
               borderRadius: BorderRadius.circular(100),
               boxShadow: [
                 BoxShadow(
                   offset: Offset(0, 8),
                   blurRadius: 10,
-                  color: PrimaryColor.withOpacity(0.23),
+                  color: WhiteColor.withOpacity(0.23),
                 ),
               ],
             ),
             child: Column(children: [
               Image.asset("assets/images/logoTTD.png", width: 100, height: 100),
-              Text("MONITORING TTD",
+              SizedBox(height: mediumPadding),
+              Text("MONEV TTD",
                   style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 18,
+                      color: PrimaryColor,
+                      fontSize: 16,
                       fontWeight: FontWeight.bold)),
             ]),
           ),
         ),
-        SizedBox(height: defaultPadding * 2),
+        SizedBox(height: defaultPadding),
         Text(
           "LOGIN USER",
-          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white),
         ),
-        SizedBox(height: defaultPadding * 2),
+        SizedBox(height: defaultPadding * 4),
       ],
     );
   }

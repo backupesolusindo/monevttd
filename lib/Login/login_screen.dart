@@ -38,7 +38,7 @@ class LoginScreen extends StatelessWidget {
             ),
             decoration: BoxDecoration(
                 image: DecorationImage(
-              image: AssetImage("assets/images/bgmonevminumobat.jpg"),
+              image: AssetImage("assets/images/bgmonevminumobatbaru.png"),
               fit: BoxFit.cover,
             ))));
   }

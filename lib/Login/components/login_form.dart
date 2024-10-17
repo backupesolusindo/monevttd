@@ -213,16 +213,29 @@ class _LoginFormState extends State<LoginForm> {
             ),
           ),
           const SizedBox(height: defaultPadding),
-          ElevatedButton(
-              onPressed: () {
-                Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => Lupa(),
-                    ));
-              },
-              child: Text('Lupa Password')),
-          const SizedBox(height: defaultPadding),
+          TextButton(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => Lupa(),
+                ),
+              );
+            },
+            style: TextButton.styleFrom(
+              padding: EdgeInsets.zero,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+            child: Text(
+              'Lupa Password',
+              style: TextStyle(
+                color: PrimaryColor,
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+          const SizedBox(height: smallPadding),
           AlreadyHaveAnAccountCheck(
             press: () {
               Navigator.push(
