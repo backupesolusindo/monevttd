@@ -2,18 +2,46 @@ import 'package:flutter/material.dart';
 import 'package:monitoringobat/components/constants.dart';
 import 'package:monitoringobat/components/responsive.dart';
 import 'package:email_validator/email_validator.dart';
+import 'package:lottie/lottie.dart';
 
 import '../../components/background.dart';
 import 'components/sign_up_top_image.dart';
 import 'components/signup_form.dart';
 
-class SignUpScreen extends StatelessWidget {
+class LoadingWidget extends StatelessWidget {
+  
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: Colors.white,
+      child: Center(
+        child: Container(
+          width: 200,
+          height: 200,
+          child: Lottie.asset(
+            'assets/lottie/main_loading.json',
+            fit: BoxFit.contain,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class SignUpScreen extends StatefulWidget {
   const SignUpScreen({Key? key}) : super(key: key);
+
+  @override
+  State<SignUpScreen> createState() => _SignUpScreenState();
+}
+
+class _SignUpScreenState extends State<SignUpScreen> {
+  bool isLoading = false;
 
   @override
   Widget build(BuildContext context) {
     return Background(
-      child: Container(
+      child: isLoading ? LoadingWidget() : Container(
         height: MediaQuery.of(context).size.height,
         decoration: const BoxDecoration(
           image: DecorationImage(
