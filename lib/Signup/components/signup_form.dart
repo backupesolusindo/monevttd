@@ -46,9 +46,6 @@ class _SignUpFormState extends State<SignUpForm> {
   TextEditingController tinggiBadanController = TextEditingController();
   TextEditingController beratBadanController = TextEditingController();
   TextEditingController alamatController = TextEditingController();
-  TextEditingController kecamatanController = TextEditingController();
-  TextEditingController kabupatenController = TextEditingController();
-  TextEditingController provinsiController = TextEditingController();
   TextEditingController jenisKelaminController = TextEditingController();
   TextEditingController noTelpController = TextEditingController();
   TextEditingController emailController = TextEditingController();
@@ -106,10 +103,7 @@ class _SignUpFormState extends State<SignUpForm> {
       'tinggi_badan': tinggiBadanController.text,
       'berat_badan': beratBadanController.text,
       'alamat': alamatController.text,
-      'kecamatan': kecamatanController.text,
-      'kabupaten': kabupatenController.text,
-      'provinsi': provinsiController.text,
-      'jekel': selectedGender, // Menggunakan selectedGender di sini
+      'jekel': selectedGender,
       'no_telp': noTelpController.text,
       'email': emailController.text,
       'umur': umurController.text,
@@ -121,26 +115,45 @@ class _SignUpFormState extends State<SignUpForm> {
         body: json.encode(data),
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': 'Bearer $accessToken', // Menggunakan token OAuth2
+          'Authorization': 'Bearer $accessToken',
         },
       );
 
+      // Debug print
+      print('Response status: ${response.statusCode}');
+      print('Response body: ${response.body}');
+
       if (response.statusCode == 200) {
-        // Registrasi berhasil, lakukan sesuatu di sini
-        print('Registrasi berhasil');
         Fluttertoast.showToast(
             msg: 'Pendaftaran Berhasil',
             backgroundColor: Colors.green,
             toastLength: Toast.LENGTH_LONG);
         Navigator.pop(context);
-        print(response.body);
+      } else if (response.statusCode == 502) {
+        Fluttertoast.showToast(
+            msg: 'Email sudah terdaftar. Silakan gunakan email lain.',
+            backgroundColor: Colors.red,
+            toastLength: Toast.LENGTH_LONG);
+        return; // Tambahkan return untuk menghentikan proses
+      } else if (response.statusCode == 501) {
+        Fluttertoast.showToast(
+            msg: 'Username sudah terdaftar. Silakan gunakan username lain.',
+            backgroundColor: Colors.red,
+            toastLength: Toast.LENGTH_LONG);
+        return; // Tambahkan return untuk menghentikan proses
       } else {
-        // Registrasi gagal, tampilkan pesan kesalahan atau lakukan sesuatu yang sesuai
-        print('Registrasi gagal. Status code: ${response.statusCode}');
+        Fluttertoast.showToast(
+            msg: 'Pendaftaran Gagal. Silakan coba lagi.',
+            backgroundColor: Colors.red,
+            toastLength: Toast.LENGTH_LONG);
+        return; // Tambahkan return untuk menghentikan proses
       }
     } catch (error) {
-      // Terjadi kesalahan dalam proses registrasi
       print('Terjadi kesalahan: $error');
+      Fluttertoast.showToast(
+          msg: 'Terjadi kesalahan. Silakan coba lagi.',
+          backgroundColor: Colors.red,
+          toastLength: Toast.LENGTH_LONG);
     }
   }
 
@@ -200,7 +213,6 @@ class _SignUpFormState extends State<SignUpForm> {
                 contentPadding: EdgeInsets.symmetric(horizontal: 0),
               ),
             ),
-            
             Expanded(
               flex: 5,
               child: RadioListTile<String>(
@@ -449,25 +461,25 @@ class _SignUpFormState extends State<SignUpForm> {
                       controller: tanggalLahirController,
                       decoration:
                           _buildInputDecoration('Tanggal Lahir').copyWith(
-                        suffixIcon: Icon(Icons.calendar_today),),
-                        onTap: () async {
-                          final DateTime? pickedDate = await showDatePicker(
-                            context: context,
-                            initialDate: selectedDate,
-                            firstDate: DateTime(1900),
-                            lastDate: DateTime.now(),
-                          );
-                          if (pickedDate != null &&
-                              pickedDate != selectedDate) {
-                            setState(() {
-                              selectedDate = pickedDate;
-                              tanggalLahirController.text =
-                                  DateFormat('yyyy-MM-dd').format(selectedDate);
-                            });
-                          }
-                        },
+                        suffixIcon: Icon(Icons.calendar_today),
                       ),
+                      onTap: () async {
+                        final DateTime? pickedDate = await showDatePicker(
+                          context: context,
+                          initialDate: selectedDate,
+                          firstDate: DateTime(1900),
+                          lastDate: DateTime.now(),
+                        );
+                        if (pickedDate != null && pickedDate != selectedDate) {
+                          setState(() {
+                            selectedDate = pickedDate;
+                            tanggalLahirController.text =
+                                DateFormat('yyyy-MM-dd').format(selectedDate);
+                          });
+                        }
+                      },
                     ),
+                  ),
                   // ),
                 ],
               ),
@@ -499,6 +511,26 @@ class _SignUpFormState extends State<SignUpForm> {
                   //     decoration: InputDecoration(hintText: 'Kecamatan'),
                   //   ),
                   // ),
+                ],
+              ),
+              SizedBox(height: 10),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextFormField(
+                      controller: tinggiBadanController,
+                      keyboardType: TextInputType.number,
+                      decoration: _buildInputDecoration('TB (cm)'),
+                    ),
+                  ),
+                  SizedBox(width: 10),
+                  Expanded(
+                    child: TextFormField(
+                      controller: beratBadanController,
+                      keyboardType: TextInputType.number,
+                      decoration: _buildInputDecoration('BB (kg)'),
+                    ),
+                  ),
                 ],
               ),
               SizedBox(height: 10),
