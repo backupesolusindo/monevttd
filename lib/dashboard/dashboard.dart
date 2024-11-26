@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:collection';
 import 'dart:convert';
 import 'dart:math';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
@@ -20,15 +21,20 @@ import 'package:monitoringobat/kalori/testingTotalKalori.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:monitoringobat/model/user.dart';
+import 'package:monitoringobat/profile/profile.dart';
 
 import 'package:monitoringobat/tambahDarah/tambahDarah.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:youtube_player_flutter/youtube_player_flutter.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+import 'package:monitoringobat/dashboard/minum_obat.dart';
 
 import '../util/core.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:monitoringobat/dashboard/upload_bukti_obat.dart';
 
 class Dashboard extends StatefulWidget {
-  const Dashboard({super.key});
+  const Dashboard({Key? key}) : super(key: key);
 
   @override
   State<Dashboard> createState() => _DashboardState();
@@ -58,7 +64,7 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
   String Id = '';
   String umur = '0';
 
-  bool isLoaded = true;
+  bool isLoaded = false;
 
   late YoutubePlayerController _playercontroller;
 
@@ -75,14 +81,117 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
     "Min"
   ];
 
+  DateTime _selectedDate = DateTime.now();
+
+  bool _isFriday = false;
+  bool _hasUploadedPhoto = false;
+
+  List<dynamic> jadwalTerdekat = [];
+  bool isLoadingJadwal = true;
+
+  Map<String, List<dynamic>> jadwalPerTanggal = {};
+
+  Future<void> checkUploadStatus() async {
+    final prefs = await SharedPreferences.getInstance();
+    var userDataString = prefs.getString('user_data');
+    var accessToken = prefs.getString('access_token');
+
+    if (userDataString != null) {
+      final userData = UserData.fromJson(json.decode(userDataString));
+      final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
+
+      try {
+        final response = await http.get(
+          Uri.parse(
+              '${base_url}api/BuktiObat/check_status?id_user=${userData.idUser}&tanggal=$today'),
+          headers: {
+            'Authorization': 'Bearer $accessToken',
+          },
+        );
+
+        if (response.statusCode == 200) {
+          final data = json.decode(response.body);
+          setState(() {
+            _hasUploadedPhoto = data['has_uploaded'];
+          });
+        }
+      } catch (e) {
+        print('Error checking upload status: $e');
+      }
+    }
+  }
+
+  Future<void> fetchJadwalBulanan(int year, int month) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      var userDataString = prefs.getString('user_data');
+      var accessToken = prefs.getString('access_token');
+
+      if (userDataString != null) {
+        final userData = UserData.fromJson(json.decode(userDataString));
+        final startDate = DateTime(year, month, 1);
+        final endDate = DateTime(year, month + 1, 0);
+
+        final response = await http.get(
+          Uri.parse('${base_url}api/JadwalObat/jadwal_bulanan?' +
+              'id_user=${userData.idUser}&' +
+              'start_date=${DateFormat('yyyy-MM-dd').format(startDate)}&' +
+              'end_date=${DateFormat('yyyy-MM-dd').format(endDate)}'),
+          headers: {
+            'Authorization': 'Bearer $accessToken',
+            'Accept': 'application/json',
+          },
+        );
+
+        print('Response jadwal_bulanan: ${response.body}');
+
+        if (response.statusCode == 200) {
+          final data = json.decode(response.body);
+          if (data['response'] != null) {
+            setState(() {
+              jadwalPerTanggal = Map<String, List<dynamic>>.from(data['response']);
+              // Urutkan jadwal per tanggal berdasarkan waktu
+              jadwalPerTanggal.forEach((tanggal, jadwalList) {
+                jadwalList.sort((a, b) => a['waktu'].compareTo(b['waktu']));
+              });
+              print('Jadwal bulanan loaded: ${jadwalPerTanggal.length} days');
+            });
+          }
+        }
+      }
+    } catch (e) {
+      print('Error fetching jadwal bulanan: $e');
+    }
+  }
+
+  void _previousMonth() {
+    setState(() {
+      _selectedDate = DateTime(_selectedDate.year, _selectedDate.month - 1, 1);
+      updateDays();
+      fetchJadwalBulanan(_selectedDate.year, _selectedDate.month);
+    });
+  }
+
+  void _nextMonth() {
+    setState(() {
+      _selectedDate = DateTime(_selectedDate.year, _selectedDate.month + 1, 1);
+      updateDays();
+      fetchJadwalBulanan(_selectedDate.year, _selectedDate.month);
+    });
+  }
+
   @override
   void initState() {
     super.initState();
+    _isFriday = DateTime.now().weekday == DateTime.friday;
+    checkUploadStatus();
     setState(() {
       days = _daysInMonth(now.year, now.month);
     });
     fetchVideo();
     loadUserData();
+    fetchJadwalTerdekat();
+    fetchJadwalBulanan(DateTime.now().year, DateTime.now().month);
   }
 
   @override
@@ -315,19 +424,275 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
   }
 
   List<DateTime> _daysInMonth(int year, int month) {
+    final firstDayOfMonth = DateTime(year, month, 1);
+    final lastDayOfMonth = DateTime(year, month + 1, 0);
+
     List<DateTime> days = [];
-    DateTime firstDayOfMonth = DateTime(year, month, 1);
-    DateTime lastDayOfMonth = DateTime(year, month + 1, 0);
-
-    for (int i = 0; i < firstDayOfMonth.weekday - 1; i++) {
-      days.add(DateTime(0, 0, 0)); // Fill with empty values for the first week
-    }
-
     for (int day = 1; day <= lastDayOfMonth.day; day++) {
       days.add(DateTime(year, month, day));
     }
-
     return days;
+  }
+
+  void updateDays() {
+    setState(() {
+      days = _daysInMonth(_selectedDate.year, _selectedDate.month);
+    });
+  }
+
+  Future<void> _takePicture() async {
+    if (_hasUploadedPhoto) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Anda sudah mengupload bukti foto hari ini'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    final ImagePicker _picker = ImagePicker();
+    try {
+      final XFile? photo = await _picker.pickImage(source: ImageSource.camera);
+      if (photo != null) {
+        final result = await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => UploadBuktiObat(
+              imageFile: File(photo.path),
+            ),
+          ),
+        );
+
+        if (result == true) {
+          setState(() {
+            _hasUploadedPhoto = true;
+          });
+          checkUploadStatus();
+        }
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Gagal mengambil foto: $e')),
+      );
+    }
+  }
+
+  Future<List<dynamic>> getRiwayatUpload(String bulan) async {
+    final prefs = await SharedPreferences.getInstance();
+    var userDataString = prefs.getString('user_data');
+    var accessToken = prefs.getString('access_token');
+
+    if (userDataString != null) {
+      final userData = UserData.fromJson(json.decode(userDataString));
+
+      try {
+        final response = await http.get(
+          Uri.parse(
+              '${base_url}api/BuktiObat/riwayat?id_user=${userData.idUser}&bulan=$bulan'),
+          headers: {
+            'Authorization': 'Bearer $accessToken',
+          },
+        );
+
+        if (response.statusCode == 200) {
+          final data = json.decode(response.body);
+          return data['data'];
+        }
+      } catch (e) {
+        print('Error getting riwayat: $e');
+      }
+    }
+    return [];
+  }
+
+  Future<void> fetchJadwalTerdekat() async {
+    setState(() => isLoadingJadwal = true);
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      var userDataString = prefs.getString('user_data');
+      var accessToken = prefs.getString('access_token');
+
+      if (userDataString != null) {
+        final userData = UserData.fromJson(json.decode(userDataString));
+
+        final response = await http.get(
+          Uri.parse(
+              '${base_url}api/JadwalObat/jadwal_terdekat?id_user=${userData.idUser}'),
+          headers: {
+            'Authorization': 'Bearer $accessToken',
+            'Accept': 'application/json',
+          },
+        );
+
+        print('Response from jadwal_terdekat: ${response.body}'); // Debug print
+
+        if (response.statusCode == 200) {
+          final data = json.decode(response.body);
+          if (data['message']['status'] == 200) {
+            setState(() {
+              // Gabungkan jadwal user dengan jadwal umum (id 89)
+              jadwalTerdekat = data['response'];
+              // Urutkan berdasarkan waktu
+              jadwalTerdekat.sort((a, b) => a['waktu'].compareTo(b['waktu']));
+              isLoadingJadwal = false;
+            });
+          } else {
+            setState(() {
+              jadwalTerdekat = [];
+              isLoadingJadwal = false;
+            });
+          }
+        }
+      }
+    } catch (e) {
+      print('Error fetching jadwal terdekat: $e');
+      setState(() {
+        jadwalTerdekat = [];
+        isLoadingJadwal = false;
+      });
+    }
+  }
+
+  Future<void> _saveSelectedJadwal(Map<String, dynamic> jadwal) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+
+      // Debug print untuk melihat data jadwal yang akan disimpan
+      print('Data jadwal yang akan disimpan: $jadwal');
+
+      // Simpan id_riwayat secara terpisah
+      await prefs.setInt('selected_riwayat_id', jadwal['id_riwayat']);
+
+      // Buat data jadwal lengkap
+      final jadwalData = {
+        'id_riwayat': jadwal['id_riwayat'],
+        'id_jadwal': jadwal['id_jadwal'],
+        'tanggal': DateFormat('yyyy-MM-dd').format(DateTime.now()),
+        'nama_obat': jadwal['nama_obat'],
+        'dosis': jadwal['dosis'],
+        'satuan': jadwal['satuan'],
+        'waktu': jadwal['waktu'],
+      };
+
+      // Simpan data jadwal lengkap
+      await prefs.setString('selected_jadwal', json.encode(jadwalData));
+
+      // Verifikasi data tersimpan
+      final savedRiwayatId = prefs.getInt('selected_riwayat_id');
+      final savedJadwal = prefs.getString('selected_jadwal');
+      print('ID Riwayat tersimpan: $savedRiwayatId');
+      print('Data jadwal tersimpan: $savedJadwal');
+    } catch (e) {
+      print('Error saat menyimpan jadwal: $e');
+      throw e;
+    }
+  }
+
+  void _showJadwalDetail(String tanggal, List<dynamic> jadwalList) {
+    showModalBottomSheet(
+      context: context,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return Container(
+          padding: EdgeInsets.all(16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Jadwal Minum Obat - ${DateFormat('dd MMMM yyyy', 'id_ID').format(DateTime.parse(tanggal))}',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              SizedBox(height: 16),
+              ...jadwalList.map((jadwal) {
+                return GestureDetector(
+                  onTap: () async {
+                    try {
+                      print('Data jadwal yang akan disimpan: $jadwal');
+
+                      final prefs = await SharedPreferences.getInstance();
+                      await prefs.setInt(
+                          'selected_riwayat_id', jadwal['id_riwayat']);
+
+                      // Debug print untuk verifikasi
+                      print(
+                          'ID Riwayat yang tersimpan: ${prefs.getInt('selected_riwayat_id')}');
+
+                      // Ambil foto
+                      final ImagePicker _picker = ImagePicker();
+                      final XFile? photo = await _picker.pickImage(
+                        source: ImageSource.camera,
+                        preferredCameraDevice: CameraDevice.rear,
+                      );
+
+                      if (photo != null) {
+                        Navigator.pop(context); // Tutup bottom sheet
+                        await Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => UploadBuktiObat(
+                              imageFile: File(photo.path),
+                            ),
+                          ),
+                        );
+                      }
+                    } catch (e) {
+                      print('Error dalam proses: $e');
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Terjadi kesalahan: $e')),
+                      );
+                    }
+                  },
+                  child: Container(
+                    margin: EdgeInsets.only(bottom: 8),
+                    padding: EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.grey),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.access_time),
+                        SizedBox(width: 8),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(jadwal['nama_obat']),
+                              Text(
+                                '${jadwal['dosis']} ${jadwal['satuan']} - ${jadwal['waktu']}',
+                                style: TextStyle(color: Colors.grey),
+                              ),
+                              Text(
+                                jadwal['status'],
+                                style: TextStyle(
+                                  color: jadwal['status'] == 'Terlewat'
+                                      ? Colors.red
+                                      : jadwal['status'] == 'Sudah diminum'
+                                          ? Colors.green
+                                          : Colors.orange,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }).toList(),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   @override
@@ -336,586 +701,660 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
 
     return Scaffold(
       bottomNavigationBar: BottomNavBar(selected: 0),
-      backgroundColor: BackgroundColor,
-      body: isLoaded
-          ? Center(
-              child: Lottie.asset('assets/lottie/main_loading.json'),
-            )
-          : ListView(
-              children: [
-                SizedBox(
-                  height: 20,
-                ),
-                Container(
-                  // height: 200.0,
-                  width: double.infinity,
-                  child: Column(
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Container(
-                            margin: EdgeInsets.only(left: 24),
-                            child: Text(
-                              'Hi, ' + Nama + Id,
-                              style: TextStyle(
-                                color: TextColordark,
-                                fontSize: 32,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-                SizedBox(
-                  height: 10,
-                ),
-                Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+      body: Container(
+        decoration: BoxDecoration(
+          image: DecorationImage(
+            image: AssetImage('assets/images/bgmonevminumobatbaru.png'),
+            fit: BoxFit.cover,
+          ),
+        ),
+        child: isLoaded
+            ? Container(
+                color: Colors.white,
+                child: Center(
                   child: Container(
-                    height: 150,
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                      children: [
-                        Expanded(
-                          flex: 1,
-                          child: Container(
-                            margin: EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 8),
-                            decoration: BoxDecoration(
-                                color: AccentColor,
-                                borderRadius: BorderRadius.circular(15.0),
-                                boxShadow: [boxShadowAccent]),
-                            child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(
-                                    Icons.person,
-                                    color: TextColorLight,
-                                    size: 40,
-                                  ),
-                                  Text(
-                                    _anim_umur.value.toStringAsFixed(0) +
-                                        ' Tahun',
-                                    style: TextStyle(
-                                      color: TextColorLight,
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                    textAlign: TextAlign.center,
-                                  ),
-                                  Text(
-                                    'Umur\n',
-                                    style: TextStyle(
-                                      color: TextColorLight,
-                                      fontSize: 14,
-                                    ),
-                                    textAlign: TextAlign.center,
-                                  ),
-                                ]),
-                          ),
-                        ),
-                        Expanded(
-                          flex: 1,
-                          child: Container(
-                            margin: EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 8),
-                            decoration: BoxDecoration(
-                                color: AccentColor,
-                                borderRadius: BorderRadius.circular(15.0),
-                                boxShadow: [boxShadowAccent]),
-                            child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(
-                                    Icons.height,
-                                    color: TextColorLight,
-                                    size: 40,
-                                  ),
-                                  Text(
-                                    _anim_tb.value.toStringAsFixed(0) + 'cm',
-                                    style: TextStyle(
-                                      color: TextColorLight,
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                    textAlign: TextAlign.center,
-                                  ),
-                                  Text(
-                                    'Tinggi Badan',
-                                    style: TextStyle(
-                                      color: TextColorLight,
-                                      fontSize: 14,
-                                    ),
-                                    textAlign: TextAlign.center,
-                                  ),
-                                ]),
-                          ),
-                        ),
-                      ],
+                    width: 200,
+                    height: 200,
+                    child: Lottie.asset(
+                      'assets/lottie/main_loading.json',
+                      fit: BoxFit.contain,
                     ),
                   ),
                 ),
-                Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
-                  child: Container(
-                    height: 150,
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                      children: [
-                        Expanded(
-                          flex: 1,
-                          child: Container(
-                            margin: EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 8),
-                            decoration: BoxDecoration(
-                                color: AccentColor,
-                                borderRadius: BorderRadius.circular(15.0),
-                                boxShadow: [boxShadowAccent]),
-                            child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(
-                                    Icons.monitor_weight_rounded,
-                                    color: TextColorLight,
-                                    size: 40,
-                                  ),
-                                  Text(
-                                    _anim_bb.value.toStringAsFixed(0) + 'kg',
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                    textAlign: TextAlign.center,
-                                  ),
-                                  Text(
-                                    'Berat Badan',
-                                    style: TextStyle(
-                                      color: TextColorLight,
-                                      fontSize: 14,
-                                    ),
-                                    textAlign: TextAlign.center,
-                                  ),
-                                ]),
-                          ),
-                        ),
-                        Expanded(
-                          flex: 1,
-                          child: Container(
-                            margin: EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 8),
-                            decoration: BoxDecoration(
-                                color: AccentColor,
-                                borderRadius: BorderRadius.circular(15.0),
-                                boxShadow: [boxShadowAccent]),
-                            child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(
-                                    Icons.fitness_center_rounded,
-                                    color: TextColorLight,
-                                    size: 40,
-                                  ),
-                                  forIMT == null
-                                      ? CircularProgressIndicator()
-                                      : Text(
-                                          imtText,
-                                          style: TextStyle(
-                                            color: Colors.white,
-                                            fontSize: 16,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                          textAlign: TextAlign.center,
-                                        ),
-                                  Text(
-                                    KeteranganImtText,
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                    textAlign: TextAlign.center,
-                                  ),
-                                  Text(
-                                    'IMT\n',
-                                    style: TextStyle(
-                                      color: TextColorLight,
-                                      fontSize: 14,
-                                    ),
-                                    textAlign: TextAlign.center,
-                                  ),
-                                ]),
-                          ),
-                        )
-                      ],
-                    ),
-                  ),
-                ),
-                GestureDetector(
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => Kuisioner(),
-                        ),
-                      );
-                    },
-                    child: Container(
-                      margin: EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-                      padding:
-                          EdgeInsets.symmetric(horizontal: 0, vertical: 10),
-                      decoration: BoxDecoration(
-                          color: PrimaryColor,
-                          borderRadius: BorderRadius.circular(15.0),
-                          boxShadow: [boxShadowPrimary]),
-                      child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.quiz_sharp,
-                              color: TextColorLight,
-                              size: 30,
-                            ),
-                            SizedBox(
-                              width: 10,
-                            ),
-                            Text(
-                              'ISI KUISIONER',
-                              style: TextStyle(
-                                color: TextColorLight,
-                                fontSize: 14,
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                          ]),
-                    )),
-                SizedBox(
-                  height: 16,
-                ),
-                Container(
-                    // height: 140,
-                    margin: EdgeInsets.symmetric(horizontal: 24),
-                    padding: EdgeInsets.symmetric(horizontal: 0, vertical: 10),
+              )
+            : ListView(
+                children: [
+                  SizedBox(height: 20),
+                  Container(
+                    width: double.infinity,
+                    padding: EdgeInsets.symmetric(vertical: 16, horizontal: 24),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text("KALENDER TTD :",
-                            style: TextStyle(
-                                fontSize: 20, fontWeight: FontWeight.bold)),
-                        //nama bulan dan tahun
-                        if (_isBelumMinum)
-                          Container(
-                            height: 20,
-                            margin: EdgeInsets.symmetric(vertical: 4),
-                            child: Marquee(
-                              text:
-                                  'Anda belum minum obat hari ini, jangan lupa minum obat ya!',
-                              style: TextStyle(
-                                color: PrimaryColor,
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                              ),
-                              scrollAxis: Axis.horizontal,
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              blankSpace: 20.0,
-                              velocity: 100.0,
-                              pauseAfterRound: Duration(seconds: 1),
-                              startPadding: 10.0,
-                              accelerationDuration: Duration(seconds: 1),
-                              accelerationCurve: Curves.linear,
-                              decelerationDuration: Duration(milliseconds: 500),
-                              decelerationCurve: Curves.easeOut,
-                            ),
-                          ),
-                        Center(
-                          child: Text(
-                            monthYearFormat.format(now).toUpperCase(),
-                            style: TextStyle(
-                              color: PrimaryColor,
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                        Center(
-                          child: Container(
-                            width: size.width * 0.9,
-                            child: GridView.builder(
-                              shrinkWrap: true,
-                              physics: NeverScrollableScrollPhysics(),
-                              gridDelegate:
-                                  SliverGridDelegateWithFixedCrossAxisCount(
-                                crossAxisCount: 7, // 7 days in a week
-                              ),
-                              itemCount: weekdays.length,
-                              itemBuilder: (BuildContext context, int index) {
-                                return Center(
-                                  child: Text(
-                                    weekdays[index],
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 14,
-                                    ),
-                                  ),
-                                );
-                              },
-                            ),
-                          ),
-                        ),
-                        Center(
-                          child: Container(
-                            width: size.width * 0.9,
-                            child: GridView.builder(
-                              shrinkWrap: true,
-                              physics: NeverScrollableScrollPhysics(),
-                              gridDelegate:
-                                  SliverGridDelegateWithFixedCrossAxisCount(
-                                crossAxisCount: 7, // 7 days in a week
-                              ),
-                              itemCount: days.length,
-                              itemBuilder: (BuildContext context, int index) {
-                                final DateTime day = days[index];
-                                final bool isToday = day.day == now.day;
-                                final bool isSelected = day.day == now.day;
-                                Color color_terpilih = WhiteColor;
-                                BoxShadow shadow_terpilih = boxShadow;
-
-                                if (isToday) {
-                                  color_terpilih = AccentColor;
-                                  shadow_terpilih = boxShadowAccent;
-                                }
-
-                                for (var i = 0; i < arTambahDarah.length; i++) {
-                                  var tgl = arTambahDarah[i].toString();
-                                  var tgl2 = tgl.split("-");
-                                  var tgl3 = int.parse(tgl2[2]).toString() +
-                                      "-" +
-                                      int.parse(tgl2[1]).toString() +
-                                      "-" +
-                                      int.parse(tgl2[0]).toString();
-                                  var tgl_now = day.day.toString() +
-                                      "-" +
-                                      day.month.toString() +
-                                      "-" +
-                                      day.year.toString();
-                                  if (tgl3 == tgl_now) {
-                                    color_terpilih = PrimaryColor;
-                                    shadow_terpilih = boxShadowPrimary;
-                                  }
-                                  // print(tgl3 + "==" + tgl_now);
-                                }
-
-                                return Container(
-                                  margin: EdgeInsets.all(4),
-                                  decoration: BoxDecoration(
-                                    color: color_terpilih,
-                                    borderRadius: BorderRadius.circular(16),
-                                    boxShadow: [shadow_terpilih],
-                                  ),
-                                  child: Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Text(
-                                        day.day.toString(),
-                                        style: TextStyle(
-                                          color: isSelected
-                                              ? Colors.white
-                                              : Colors.black,
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                );
-                              },
-                            ),
-                          ),
-                        )
-                      ],
-                    )),
-                SizedBox(
-                  height: 16,
-                ),
-                Container(
-                  padding: EdgeInsets.symmetric(horizontal: 24),
-                  child: Text(
-                    'VIDEO EDUKASI : ',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-                Container(
-                    margin: EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                    padding: EdgeInsets.all(4),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(16.0),
-                      boxShadow: [boxShadow],
-                    ),
-                    child: YoutubePlayerBuilder(
-                      // YoutubePlayerBuilder
-                      player: YoutubePlayer(
-                        controller: _playercontroller,
-                        showVideoProgressIndicator: true,
-                        progressIndicatorColor: Colors.blueAccent,
-                        topActions: <Widget>[
-                          const SizedBox(width: 8.0),
-                          Expanded(
-                            child: Text(
-                              _playercontroller.metadata.title,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 18.0,
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                              maxLines: 1,
-                            ),
-                          ),
-                          IconButton(
-                            icon: const Icon(
-                              Icons.settings,
-                              color: Colors.white,
-                              size: 25.0,
-                            ),
-                            onPressed: () {
-                              print('Settings Tapped!');
-                              _playercontroller.play();
-                            },
-                          ),
-                        ],
-                        onReady: () {
-                          print('Player is ready.');
-                        },
-                      ),
-                      builder: (context, player) {
-                        return Column(
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            // some widgets
-                            player,
-                            //some other widgets
-                          ],
-                        );
-                      },
-                    )),
-                SizedBox(
-                  height: 10,
-                ),
-                Container(
-                  padding: EdgeInsets.symmetric(horizontal: 24),
-                  child: Text(
-                    'ARTIKER TERBARU : ',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-                ListView.builder(
-                  shrinkWrap: true,
-                  physics: NeverScrollableScrollPhysics(),
-                  itemCount:
-                      articles.length, // Jumlah card yang ingin ditampilkan
-                  scrollDirection:
-                      Axis.vertical, // Untuk menggeser card ke samping
-                  itemBuilder: (BuildContext context, int index) {
-                    // Daftar warna gradient yang berbeda
-                    List<List<Color>> gradients = [
-                      [PrimaryColor, Colors.white],
-                      [SecondaryColor, Colors.white],
-                      [ThirdColor, Colors.white],
-                      [PrimaryColor, Colors.white],
-                      [SecondaryColor, Colors.white],
-                    ];
-
-                    return GestureDetector(
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => BacaArtikel(
-                                title: articles[index]['judul'],
-                                description: articles[index]['konten'],
-                                image: articles[index]['gambar_artikel']),
-                          ),
-                        );
-                      },
-                      child: Container(
-                          margin: EdgeInsets.symmetric(
-                              horizontal: 16, vertical: 16),
-                          width: 250, // Lebar card
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(16.0),
-                            image: DecorationImage(
-                              image: NetworkImage(
-                                  articles[index]['gambar_artikel']),
-                              fit: BoxFit.cover,
-                            ),
-                            // boxShadow: [boxShadowPrimary],
-                          ),
-                          child: Container(
-                            padding: EdgeInsets.only(left: 8, right: 8),
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(16.0),
-                              color: Colors.black.withOpacity(0.4),
-                              boxShadow: [boxShadow],
-                            ),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.start,
+                            Row(
                               children: [
-                                // Gambar dari asset
-                                Expanded(
-                                  child: Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.center,
-                                    children: [
-                                      Container(
-                                        alignment: Alignment.center,
-                                        child: Text(
-                                          articles[index][
-                                              'judul'], // Ganti dengan deskripsi yang sesuai
-                                          style: TextStyle(
-                                            color:
-                                                TextColorLight, // Warna teks pada latar belakang gradient
-                                            fontSize: 16.0,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                          textAlign: TextAlign.center,
-                                        ),
-                                      ),
-                                      // Tambahkan widget lainnya di sini jika diperlukan
-                                    ],
+                                GestureDetector(
+                                  onTap: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                          builder: (context) => Profile()),
+                                    );
+                                  },
+                                  child: Container(
+                                    width: 40,
+                                    height: 40,
+                                    margin: EdgeInsets.only(right: 12),
+                                    child: SvgPicture.asset(
+                                      'assets/icons/user.svg',
+                                      color: Colors.white,
+                                    ),
                                   ),
                                 ),
-                                SizedBox(
-                                    width: 10), // Spasi antara gambar dan judul
-                                Container(
-                                  width: 90, // Lebar gambar
-                                  height: 90, // Tinggi gambar
-                                  child: ClipRRect(
-                                    borderRadius: BorderRadius.circular(24),
-                                    child: Image.network(
-                                      articles[index]['gambar_artikel'],
-                                      fit: BoxFit.cover,
-                                    ),
+                                Text(
+                                  'Hi, ' + Nama,
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 32,
+                                    fontWeight: FontWeight.bold,
                                   ),
                                 ),
                               ],
                             ),
-                          )),
-                    );
-                  },
-                ),
-              ],
-            ),
+                          ],
+                        ),
+                        SizedBox(height: 20),
+                        Container(
+                          padding: EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(1),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: Colors.grey.shade300),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'JADWAL MINUM OBAT',
+                                style: TextStyle(
+                                  color: PrimaryColor,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                ),
+                              ),
+                              SizedBox(height: 10),
+                              isLoadingJadwal
+                                  ? Center(
+                                      child: Container(
+                                        width: 100,
+                                        height: 100,
+                                        child: Lottie.asset(
+                                          'assets/lottie/main_loading.json',
+                                          fit: BoxFit.contain,
+                                        ),
+                                      ),
+                                    )
+                                  : jadwalTerdekat.isEmpty
+                                      ? Center(
+                                          child: Text(
+                                            'Tidak ada jadwal minum obat untuk hari ini',
+                                            style: TextStyle(
+                                              color: Colors.grey,
+                                              fontSize: 14,
+                                            ),
+                                          ),
+                                        )
+                                      : Column(
+                                          children: [
+                                            Row(
+                                              children: [
+                                                SvgPicture.asset(
+                                                  'assets/icons/calendar-clock.svg',
+                                                  width: 20,
+                                                  height: 20,
+                                                  color: Colors.grey,
+                                                ),
+                                                SizedBox(width: 8),
+                                                Expanded(
+                                                  child: Text(
+                                                    '${DateFormat('EEEE', 'id_ID').format(DateTime.now())}',
+                                                    style: TextStyle(
+                                                        color: Colors.grey),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                            SizedBox(height: 10),
+                                            ...jadwalTerdekat
+                                                .map(
+                                                    (jadwal) => GestureDetector(
+                                                          onTap: () async {
+                                                            if (jadwal['status'].toString().toLowerCase() == 'sudah') {
+                                                              ScaffoldMessenger.of(context).showSnackBar(
+                                                                SnackBar(
+                                                                  content: Text('Anda sudah minum obat ini'),
+                                                                  backgroundColor: Colors.green,
+                                                                ),
+                                                              );
+                                                              return;
+                                                            }
+                                                            
+                                                            await _saveSelectedJadwal(jadwal);
+                                                            Navigator.push(
+                                                              context,
+                                                              MaterialPageRoute(
+                                                                builder: (context) => MinumObat(),
+                                                              ),
+                                                            ).then((value) {
+                                                              if (value == true) {
+                                                                fetchJadwalTerdekat();
+                                                                checkUploadStatus();
+                                                              }
+                                                            });
+                                                          },
+                                                          child: Container(
+                                                            margin: EdgeInsets.only(bottom: 8),
+                                                            padding: EdgeInsets.all(12),
+                                                            decoration: BoxDecoration(
+                                                              border: Border.all(
+                                                                color: jadwal['status'].toString().toLowerCase() == 'terlewat'
+                                                                    ? Colors.red.withOpacity(0.5)
+                                                                    : jadwal['status'].toString().toLowerCase() == 'sudah'
+                                                                        ? Colors.green.withOpacity(0.5)
+                                                                        : Colors.grey.shade300
+                                                              ),
+                                                              borderRadius: BorderRadius.circular(8),
+                                                            ),
+                                                            child: Row(
+                                                              children: [
+                                                                SvgPicture.asset(
+                                                                  jadwal['status'].toString().toLowerCase() == 'terlewat'
+                                                                      ? 'assets/icons/capsules-terlewat.svg'
+                                                                      : jadwal['status'].toString().toLowerCase() == 'sudah'
+                                                                          ? 'assets/icons/capsules-sudah.svg'
+                                                                          : 'assets/icons/capsules.svg',
+                                                                  width: 20,
+                                                                  height: 20,
+                                                                  color: jadwal['status'].toString().toLowerCase() == 'terlewat'
+                                                                      ? Colors.red
+                                                                      : jadwal['status'].toString().toLowerCase() == 'sudah'
+                                                                          ? Colors.green
+                                                                          : PrimaryColor,
+                                                                ),
+                                                                SizedBox(width: 8),
+                                                                Expanded(
+                                                                  child: Column(
+                                                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                                                    children: [
+                                                                      Text(
+                                                                        jadwal['nama_obat'],
+                                                                        style: TextStyle(
+                                                                          fontWeight: FontWeight.bold,
+                                                                          color: Colors.black87,
+                                                                        ),
+                                                                      ),
+                                                                      Text(
+                                                                        '${jadwal['dosis']} ${jadwal['satuan']}',
+                                                                        style: TextStyle(
+                                                                          color: Colors.grey,
+                                                                          fontSize: 12,
+                                                                        ),
+                                                                      ),
+                                                                      Text(
+                                                                        jadwal['status'].toString().toLowerCase() == 'sudah'
+                                                                            ? 'Anda sudah minum obat ini'
+                                                                            : jadwal['status'].toString().toLowerCase() == 'terlewat'
+                                                                                ? 'Anda melewatkan jadwal minum obat'
+                                                                                : 'Kamu belum minum obat, tekan untuk minum obat',
+                                                                        style: TextStyle(
+                                                                          color: jadwal['status'].toString().toLowerCase() == 'terlewat'
+                                                                              ? Colors.red
+                                                                              : jadwal['status'].toString().toLowerCase() == 'sudah'
+                                                                                  ? Colors.green
+                                                                                  : Colors.orange,
+                                                                          fontSize: 12,
+                                                                          fontWeight: FontWeight.bold,
+                                                                        ),
+                                                                      ),
+                                                                    ],
+                                                                  ),
+                                                                ),
+                                                                Text(
+                                                                  jadwal['waktu'],
+                                                                  style: TextStyle(
+                                                                    color: jadwal['status'].toString().toLowerCase() == 'terlewat'
+                                                                        ? Colors.red
+                                                                        : jadwal['status'].toString().toLowerCase() == 'sudah'
+                                                                            ? Colors.green
+                                                                            : PrimaryColor,
+                                                                    fontWeight: FontWeight.bold,
+                                                                  ),
+                                                                ),
+                                                              ],
+                                                            ),
+                                                          ),
+                                                        ))
+                                                .toList(),
+                                          ],
+                                        ),
+                              SizedBox(height: 10),
+                              // GestureDetector(
+                              //   onTap: _takePicture,
+                              //   child: Row(
+                              //     mainAxisAlignment: MainAxisAlignment.end,
+                              //     children: [
+                              //       Column(
+                              //         children: [
+                              //           SvgPicture.asset(
+                              //             'assets/icons/mode-portrait.svg',
+                              //             width: 24,
+                              //             height: 24,
+                              //             color: PrimaryColor,
+                              //           ),
+                              //           SizedBox(height: 4),
+                              //           Text(
+                              //             'Buat Foto\nMinum Obat',
+                              //             style: TextStyle(
+                              //               color: PrimaryColor,
+                              //               fontSize: 12,
+                              //               fontWeight: FontWeight.bold,
+                              //             ),
+                              //             textAlign: TextAlign.center,
+                              //           ),
+                              //         ],
+                              //       ),
+                              //     ],
+                              //   ),
+                              // ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  SizedBox(
+                    height: 16,
+                  ),
+                  Container(
+                    margin: EdgeInsets.symmetric(horizontal: 24),
+                    padding: EdgeInsets.only(bottom: 10),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.grey.shade300),
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          decoration: BoxDecoration(
+                            color: PrimaryColor,
+                            borderRadius: BorderRadius.only(
+                              topLeft: Radius.circular(10),
+                              topRight: Radius.circular(10),
+                            ),
+                          ),
+                          child: Column(
+                            children: [
+                              Padding(
+                                padding: EdgeInsets.symmetric(vertical: 10),
+                                child: Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    IconButton(
+                                      icon: Icon(Icons.chevron_left,
+                                          color: Colors.white),
+                                      onPressed: _previousMonth,
+                                    ),
+                                    Text(
+                                      DateFormat('MMMM yyyy')
+                                          .format(_selectedDate)
+                                          .toUpperCase(),
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    IconButton(
+                                      icon: Icon(Icons.chevron_right,
+                                          color: Colors.white),
+                                      onPressed: _nextMonth,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Container(
+                                color: Colors.white,
+                                child: GridView.builder(
+                                  shrinkWrap: true,
+                                  physics: NeverScrollableScrollPhysics(),
+                                  gridDelegate:
+                                      SliverGridDelegateWithFixedCrossAxisCount(
+                                    crossAxisCount: 7,
+                                    childAspectRatio: 1,
+                                  ),
+                                  itemCount: 7 +
+                                      (6 *
+                                          7), // Header hari + maksimum 6 minggu
+                                  itemBuilder:
+                                      (BuildContext context, int index) {
+                                    if (index < 7) {
+                                      return Center(
+                                        child: Text(
+                                          [
+                                            'Min',
+                                            'Sen',
+                                            'Sel',
+                                            'Rab',
+                                            'Kam',
+                                            'Jum',
+                                            'Sab'
+                                          ][index],
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            color: PrimaryColor,
+                                          ),
+                                        ),
+                                      );
+                                    }
+
+                                    final DateTime firstDayOfMonth = DateTime(
+                                        _selectedDate.year,
+                                        _selectedDate.month,
+                                        1);
+                                    final int daysBeforeFirstDay =
+                                        firstDayOfMonth.weekday % 7;
+                                    final int day =
+                                        index - 6 - daysBeforeFirstDay;
+
+                                    if (day < 1 ||
+                                        day >
+                                            DateTime(_selectedDate.year,
+                                                    _selectedDate.month + 1, 0)
+                                                .day) {
+                                      return Container();
+                                    }
+
+                                    final String currentDate =
+                                        DateFormat('yyyy-MM-dd').format(
+                                            DateTime(_selectedDate.year,
+                                                _selectedDate.month, day));
+
+                                    final bool isToday =
+                                        day == DateTime.now().day &&
+                                            _selectedDate.year ==
+                                                DateTime.now().year &&
+                                            _selectedDate.month ==
+                                                DateTime.now().month;
+                                    final bool hasJadwal = jadwalPerTanggal
+                                        .containsKey(currentDate);
+                                    final bool hasTerlewat = hasJadwal &&
+                                        jadwalPerTanggal[currentDate]!.any(
+                                            (j) =>
+                                                j['status']
+                                                    .toString()
+                                                    .toLowerCase() ==
+                                                'terlewat');
+
+                                    return GestureDetector(
+                                      onTap: hasJadwal
+                                          ? () {
+                                              _showJadwalDetail(
+                                                  currentDate,
+                                                  jadwalPerTanggal[
+                                                      currentDate]!);
+                                            }
+                                          : null,
+                                      child: Container(
+                                        margin: EdgeInsets.all(2),
+                                        decoration: BoxDecoration(
+                                          color: isToday
+                                              ? PrimaryColor
+                                              : Colors.transparent,
+                                          borderRadius:
+                                              BorderRadius.circular(5),
+                                        ),
+                                        child: Column(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
+                                          children: [
+                                            Text(
+                                              day.toString(),
+                                              style: TextStyle(
+                                                color: isToday
+                                                    ? Colors.white
+                                                    : Colors.black,
+                                                fontWeight: isToday
+                                                    ? FontWeight.bold
+                                                    : FontWeight.normal,
+                                              ),
+                                            ),
+                                            SizedBox(height: 4),
+                                            if (hasJadwal)
+                                              SvgPicture.asset(
+                                                hasTerlewat
+                                                    ? 'assets/icons/capsules-terlewat.svg'
+                                                    : jadwalPerTanggal[
+                                                                currentDate]!
+                                                            .any((j) =>
+                                                                j['status']
+                                                                    .toString()
+                                                                    .toLowerCase() ==
+                                                                'sudah')
+                                                        ? 'assets/icons/capsules-sudah.svg'
+                                                        : 'assets/icons/capsules.svg',
+                                                width: 12,
+                                                height: 12,
+                                                color: hasTerlewat
+                                                    ? Colors.red
+                                                    : jadwalPerTanggal[
+                                                                currentDate]!
+                                                            .any((j) =>
+                                                                j['status']
+                                                                    .toString()
+                                                                    .toLowerCase() ==
+                                                                'sudah')
+                                                        ? Colors.green
+                                                        : Colors.grey,
+                                              ),
+                                          ],
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  SizedBox(
+                    height: 16,
+                  ),
+                  Container(
+                    padding: EdgeInsets.symmetric(horizontal: 24),
+                    child: Text(
+                      'VIDEO EDUKASI : ',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  Container(
+                      margin:
+                          EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                      padding: EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(16.0),
+                        boxShadow: [boxShadow],
+                      ),
+                      child: YoutubePlayerBuilder(
+                        // YoutubePlayerBuilder
+                        player: YoutubePlayer(
+                          controller: _playercontroller,
+                          showVideoProgressIndicator: true,
+                          progressIndicatorColor: Colors.blueAccent,
+                          topActions: <Widget>[
+                            const SizedBox(width: 8.0),
+                            Expanded(
+                              child: Text(
+                                _playercontroller.metadata.title,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 18.0,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                                maxLines: 1,
+                              ),
+                            ),
+                            IconButton(
+                              icon: const Icon(
+                                Icons.settings,
+                                color: Colors.white,
+                                size: 25.0,
+                              ),
+                              onPressed: () {
+                                print('Settings Tapped!');
+                                _playercontroller.play();
+                              },
+                            ),
+                          ],
+                          onReady: () {
+                            print('Player is ready.');
+                          },
+                        ),
+                        builder: (context, player) {
+                          return Column(
+                            children: [
+                              // some widgets
+                              player,
+                              //some other widgets
+                            ],
+                          );
+                        },
+                      )),
+                  SizedBox(
+                    height: 10,
+                  ),
+                  // Container(
+                  //   padding: EdgeInsets.symmetric(horizontal: 24),
+                  //   child: Text(
+                  //     'ARTIKEL TERBARU : ',
+                  //     style: TextStyle(
+                  //       fontSize: 20,
+                  //       fontWeight: FontWeight.bold,
+                  //     ),
+                  //   ),
+                  // ),
+                  // ListView.builder(
+                  //   shrinkWrap: true,
+                  //   physics: NeverScrollableScrollPhysics(),
+                  //   itemCount:
+                  //       articles.length, // Jumlah card yang ingin ditampilkan
+                  //   scrollDirection:
+                  //       Axis.vertical, // Untuk menggeser card ke samping
+                  //   itemBuilder: (BuildContext context, int index) {
+                  //     // Daftar warna gradient yang berbeda
+                  //     List<List<Color>> gradients = [
+                  //       [PrimaryColor, Colors.white],
+                  //       [SecondaryColor, Colors.white],
+                  //       [ThirdColor, Colors.white],
+                  //       [PrimaryColor, Colors.white],
+                  //       [SecondaryColor, Colors.white],
+                  //     ];
+
+                  //     return GestureDetector(
+                  //       onTap: () {
+                  //         Navigator.push(
+                  //           context,
+                  //           MaterialPageRoute(
+                  //             builder: (context) => BacaArtikel(
+                  //                 title: articles[index]['judul'],
+                  //                 description: articles[index]['konten'],
+                  //                 image: articles[index]['gambar_artikel']),
+                  //           ),
+                  //         );
+                  //       },
+                  //       child: Container(
+                  //           margin: EdgeInsets.symmetric(
+                  //               horizontal: 16, vertical: 16),
+                  //           width: 250, // Lebar card
+                  //           decoration: BoxDecoration(
+                  //             borderRadius: BorderRadius.circular(16.0),
+                  //             image: DecorationImage(
+                  //               image: NetworkImage(
+                  //                   articles[index]['gambar_artikel']),
+                  //               fit: BoxFit.cover,
+                  //             ),
+                  //             // boxShadow: [boxShadowPrimary],
+                  //           ),
+                  //           child: Container(
+                  //             padding: EdgeInsets.only(left: 8, right: 8),
+                  //             decoration: BoxDecoration(
+                  //               borderRadius: BorderRadius.circular(16.0),
+                  //               color: Colors.black.withOpacity(0.4),
+                  //               boxShadow: [boxShadow],
+                  //             ),
+                  //             child: Row(
+                  //               mainAxisAlignment: MainAxisAlignment.start,
+                  //               children: [
+                  //                 // Gambar dari asset
+                  //                 Expanded(
+                  //                   child: Column(
+                  //                     mainAxisAlignment:
+                  //                         MainAxisAlignment.center,
+                  //                     crossAxisAlignment:
+                  //                         CrossAxisAlignment.center,
+                  //                     children: [
+                  //                       Container(
+                  //                         alignment: Alignment.center,
+                  //                         child: Text(
+                  //                           articles[index][
+                  //                               'judul'], // Ganti dengan deskripsi yang sesuai
+                  //                           style: TextStyle(
+                  //                             color:
+                  //                                 TextColorLight, // Warna teks pada latar belakang gradient
+                  //                             fontSize: 16.0,
+                  //                             fontWeight: FontWeight.bold,
+                  //                           ),
+                  //                           textAlign: TextAlign.center,
+                  //                         ),
+                  //                       ),
+                  //                       // Tambahkan widget lainnya di sini jika diperlukan
+                  //                     ],
+                  //                   ),
+                  //                 ),
+                  //                 SizedBox(
+                  //                     width:
+                  //                         10), // Spasi antara gambar dan judul
+                  //                 Container(
+                  //                   width: 90, // Lebar gambar
+                  //                   height: 90, // Tinggi gambar
+                  //                   child: ClipRRect(
+                  //                     borderRadius: BorderRadius.circular(24),
+                  //                     child: Image.network(
+                  //                       articles[index]['gambar_artikel'],
+                  //                       fit: BoxFit.cover,
+                  //                     ),
+                  //                   ),
+                  //                 ),
+                  //               ],
+                  //             ),
+                  //           )),
+                  //     );
+                  //   },
+                  // ),
+                ],
+              ),
+      ),
     );
   }
 }
