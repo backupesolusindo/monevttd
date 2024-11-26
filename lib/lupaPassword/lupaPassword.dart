@@ -14,6 +14,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 
 import '../util/core.dart';
+import '../util/colors.dart';
 
 class Lupa extends StatefulWidget {
   const Lupa({
@@ -148,38 +149,102 @@ class _LupaState extends State<Lupa> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
         title: Text('Lupa Password'),
+        titleTextStyle: TextStyle(
+            color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+        backgroundColor: PrimaryColor,
       ),
       body: Container(
-        padding: EdgeInsets.all(16.0),
+        height: MediaQuery.of(context).size.height,
         decoration: BoxDecoration(
           image: DecorationImage(
-            image: AssetImage("assets/images/bg_login.png"),
+            image: AssetImage("assets/images/bgmonevminumobatbaru.png"),
             fit: BoxFit.cover,
           ),
         ),
-        child: Column(
-          children: [
-            TextFormField(
-              controller: _emailController,
-              decoration: InputDecoration(labelText: 'Masukan Email Anda'),
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: EdgeInsets.all(16.0),
+            child: Column(
+              children: [
+                SizedBox(height: 80),
+                TextFormField(
+                  controller: _emailController,
+                  keyboardType: TextInputType.emailAddress,
+                  cursorColor: PrimaryColor,
+                  decoration: InputDecoration(
+                    hintText: "Masukan Email Anda",
+                    prefixIcon: Padding(
+                      padding: const EdgeInsets.all(defaultPadding),
+                      child: Icon(Icons.email, color: PrimaryColor),
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide(color: PrimaryColor, width: 1.5),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide(color: PrimaryColor, width: 1.5),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide(color: PrimaryColor, width: 2),
+                    ),
+                    filled: true,
+                    fillColor: Colors.white,
+                  ),
+                ),
+                SizedBox(height: 16.0),
+                TextFormField(
+                  controller: _tglLahirController,
+                  keyboardType: TextInputType.number,
+                  maxLength: 8,
+                  cursorColor: PrimaryColor,
+                  decoration: InputDecoration(
+                    hintText: "Tanggal Lahir: 10122002 (ddmmyyyy)",
+                    prefixIcon: Padding(
+                      padding: const EdgeInsets.all(defaultPadding),
+                      child: Icon(Icons.calendar_today, color: PrimaryColor),
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide(color: PrimaryColor, width: 1.5),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide(color: PrimaryColor, width: 1.5),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide(color: PrimaryColor, width: 2),
+                    ),
+                    filled: true,
+                    fillColor: Colors.white,
+                  ),
+                ),
+                SizedBox(height: 32),
+                ElevatedButton(
+                  onPressed: _login,
+                  style: ElevatedButton.styleFrom(
+                    foregroundColor: Colors.white,
+                    backgroundColor: PrimaryColor,
+                    padding: EdgeInsets.symmetric(horizontal: 50, vertical: 15),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  child: Text(
+                    "Verifikasi".toUpperCase(),
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ],
             ),
-            SizedBox(height: 16.0),
-            TextFormField(
-              controller: _tglLahirController,
-              keyboardType: TextInputType.number,
-              maxLength: 8,
-              decoration: InputDecoration(
-                  labelText: 'Tanggal Lahir Anda : 10122002 (ddmmyyyy)'),
-            ),
-            Container(
-                child: ElevatedButton(
-              onPressed: () {
-                _login();
-              },
-              child: Text('Verifikasi'),
-            ))
-          ],
+          ),
         ),
       ),
     );
