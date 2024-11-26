@@ -29,13 +29,14 @@ class LoginScreenTopImage extends StatelessWidget {
               ],
             ),
             child: Column(children: [
-              Image.asset("assets/images/logoTTD.png", width: 100, height: 100),
-              SizedBox(height: mediumPadding),
-              Text("MONEV TTD",
-                  style: TextStyle(
-                      color: PrimaryColor,
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold)),
+              SizedBox(height: 25),
+              Image.asset("assets/images/logomonevTTDbaru.png", width: 100, height: 100),
+              SizedBox(height: 10),
+              // Text("MONEV TTD",
+              //     style: TextStyle(
+              //         color: PrimaryColor,
+              //         fontSize: 16,
+              //         fontWeight: FontWeight.bold)),
             ]),
           ),
         ),
