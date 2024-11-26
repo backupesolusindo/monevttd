@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:monitoringobat/bloc/nav/bottom_nav.dart';
 import 'package:monitoringobat/laporan/laporan_bb_tb_hb_page.dart';
 import 'package:monitoringobat/util/colors.dart';
-import 'package:monitoringobat/kuesioner/kuesioner.dart';
+import 'package:monitoringobat/Kuisioner/kuesioner.dart';
 import 'package:monitoringobat/riwayat/riwayat_bb_hb.dart';
 
 class KuesionerPage extends StatelessWidget {
