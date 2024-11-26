@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:monitoringobat/components/constants.dart';
+import 'package:monitoringobat/util/colors.dart';
 
 class AlreadyHaveAnAccountCheck extends StatelessWidget {
   final bool login;
@@ -17,14 +18,14 @@ class AlreadyHaveAnAccountCheck extends StatelessWidget {
       children: <Widget>[
         Text(
           login ? "Don’t have an Account ? " : "Already have an Account ? ",
-          style: const TextStyle(color: kPrimaryColor),
+          style: const TextStyle(color: PrimaryColor),
         ),
         GestureDetector(
           onTap: press as void Function()?,
           child: Text(
             login ? "Sign Up" : "Sign In",
             style: const TextStyle(
-              color: kPrimaryColor,
+              color: PrimaryColor,
               fontWeight: FontWeight.bold,
             ),
           ),
