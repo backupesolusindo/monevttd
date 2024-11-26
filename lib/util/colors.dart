@@ -27,7 +27,7 @@ const boxShadow = BoxShadow(
 );
 
 const boxShadowPrimary = BoxShadow(
-  color: Color.fromARGB(133, 255, 178, 213),
+  color: Color(0xFF57D3E0),
   blurRadius: 8.0,
   spreadRadius: 4.0,
   offset: Offset(1.0, 4),
