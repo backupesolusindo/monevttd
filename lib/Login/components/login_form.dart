@@ -27,6 +27,7 @@ class LoginForm extends StatefulWidget {
 class _LoginFormState extends State<LoginForm> {
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+  bool _obscureText = true; // Untuk mengontrol visibilitas password
 
   String clientId = "PKL2023";
   String clientSecret = "PKLSERU";
@@ -160,56 +161,97 @@ class _LoginFormState extends State<LoginForm> {
     return Form(
       child: Column(
         children: [
+          SizedBox(height: 80),
+          // Card(
+          //   elevation: 2,
+          //   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          //   child: 
           TextFormField(
             controller: _usernameController,
             keyboardType: TextInputType.emailAddress,
             textInputAction: TextInputAction.next,
-            cursorColor: kPrimaryColor,
+            cursorColor: PrimaryColor,
             decoration: InputDecoration(
               hintText: "Username",
               prefixIcon: Padding(
                 padding: const EdgeInsets.all(defaultPadding),
-                child: Icon(Icons.person),
+                child: Icon(Icons.person, color: PrimaryColor),
               ),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide(color: PrimaryColor, width: 1.5),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide(color: PrimaryColor, width: 1.5),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide(color: PrimaryColor, width: 2),
+              ),
+              filled: true,
+              fillColor: Colors.white,
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: defaultPadding),
-            child: TextFormField(
-              controller: _passwordController,
-              textInputAction: TextInputAction.done,
-              obscureText: true,
-              cursorColor: kPrimaryColor,
-              decoration: InputDecoration(
-                hintText: "Password",
-                prefixIcon: Padding(
-                  padding: const EdgeInsets.all(defaultPadding),
-                  child: Icon(Icons.lock),
-                ),
+          // ),
+          SizedBox(height: 16),
+          // Card(
+          //   elevation: 2,
+          //   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          //   child: 
+          TextFormField(
+            controller: _passwordController,
+            textInputAction: TextInputAction.done,
+            obscureText: _obscureText,
+            cursorColor: PrimaryColor,
+            decoration: InputDecoration(
+              hintText: "Password",
+              prefixIcon: Padding(
+                padding: const EdgeInsets.all(defaultPadding),
+                child: Icon(Icons.lock, color: PrimaryColor),
               ),
+              suffixIcon: IconButton(
+                icon: Icon(
+                  _obscureText ? Icons.visibility : Icons.visibility_off,
+                  color: PrimaryColor,
+                ),
+                onPressed: () {
+                  setState(() {
+                    _obscureText = !_obscureText;
+                  });
+                },
+              ),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide(color: PrimaryColor, width: 1.5),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide(color: PrimaryColor, width: 1.5),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide(color: PrimaryColor, width: 2),
+              ),
+              filled: true,
+              fillColor: Colors.white,
             ),
           ),
-          const SizedBox(height: defaultPadding),
-          Hero(
-            tag: "login_btn",
-            child: TextButton(
-              onPressed: _login,
-              style: TextButton.styleFrom(
-                backgroundColor: PrimaryColor,
-                padding: EdgeInsets.symmetric(
-                  horizontal: 100,
-                  vertical: defaultPadding,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
+          // ),
+          SizedBox(height: 32),
+          ElevatedButton(
+            onPressed: _login,
+            style: ElevatedButton.styleFrom(
+              foregroundColor: Colors.white,
+              backgroundColor: PrimaryColor,
+              padding: EdgeInsets.symmetric(horizontal: 50, vertical: 15),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
               ),
-              child: Text("Login".toUpperCase(),
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: TextColorLight,
-                  )),
+            ),
+            child: Text(
+              "Login".toUpperCase(),
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
           ),
           const SizedBox(height: defaultPadding),
