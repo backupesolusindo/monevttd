@@ -20,144 +20,419 @@ import 'package:page_transition/page_transition.dart';
 import 'package:monitoringobat/profile/profile.dart';
 import 'package:monitoringobat/riwayat/riwayat.dart';
 import 'package:provider/provider.dart';
+import 'package:monitoringobat/pages/menu_page.dart';
+import 'package:monitoringobat/pages/kuesioner_page.dart';
+import 'package:monitoringobat/artikel/artikel.dart';
+import 'package:lottie/lottie.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+import 'package:monitoringobat/util/notification_service.dart';
+import 'package:http/http.dart' as http;
+// import 'package:monitoringobat/util/constant.dart';
+import '../util/core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'dart:convert';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:monitoringobat/util/alarm_service.dart';
+import 'dart:io';
+import 'package:android_alarm_manager_plus/android_alarm_manager_plus.dart';
+import 'package:device_info_plus/device_info_plus.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:monitoringobat/util/article_notification_service.dart';
+
+class SplashScreen extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.white,
+      body: Center(
+        child: Container(
+          width: 200,
+          height: 200,
+          child: Lottie.asset(
+            'assets/lottie/main_loading.json',
+            fit: BoxFit.contain,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  await Firebase.initializeApp();
+  print("Handling a background message: ${message.messageId}");
+}
+
+Future<void> _requestPermissions() async {
+  print('=== MEMINTA IZIN APLIKASI ===');
+  
+  if (Platform.isAndroid) {
+    try {
+      final deviceInfo = await DeviceInfoPlugin().androidInfo;
+      print('Android SDK Version: ${deviceInfo.version.sdkInt}');
+      
+      // Daftar izin yang akan diminta
+      final permissions = <Permission>[];
+      
+      // Izin notifikasi untuk Android 13+
+      if (deviceInfo.version.sdkInt >= 33) {
+        permissions.add(Permission.notification);
+      }
+      
+      // Izin battery optimization
+      if (await Permission.ignoreBatteryOptimizations.status.isDenied) {
+        final batteryStatus = await Permission.ignoreBatteryOptimizations.request();
+        print('Izin battery optimization: ${batteryStatus.isGranted ? "Diberikan" : "Ditolak"}');
+      }
+      
+      // Izin system alert window
+      if (await Permission.systemAlertWindow.status.isDenied) {
+        final alertStatus = await Permission.systemAlertWindow.request();
+        print('Izin system alert window: ${alertStatus.isGranted ? "Diberikan" : "Ditolak"}');
+      }
+      
+      // Izin exact alarm untuk Android 12+
+      if (deviceInfo.version.sdkInt >= 31) {
+        if (await Permission.scheduleExactAlarm.status.isDenied) {
+          final granted = await Permission.scheduleExactAlarm.request();
+          print('Izin exact alarm: ${granted.isGranted ? "Diberikan" : "Ditolak"}');
+        }
+      }
+      
+      // Request semua izin yang terkumpul
+      if (permissions.isNotEmpty) {
+        final statuses = await permissions.request();
+        statuses.forEach((permission, status) {
+          print('Izin ${permission.toString()}: ${status.isGranted ? "Diberikan" : "Ditolak"}');
+        });
+      }
+      
+    } catch (e, stackTrace) {
+      print('Error dalam meminta izin: $e');
+      print('Stack trace: $stackTrace');
+    }
+  } else {
+    print('Bukan perangkat Android, melewati permintaan izin');
+  }
+  
+  print('=== SELESAI MEMINTA IZIN ===');
+}
 
 void main() async {
-  // WidgetsFlutterBinding.ensureInitialized();
-  // try {
-  //   await Firebase.initializeApp();
-  // } catch (e) {
-  //   print('Terjadi kesalahan saat menginisialisasi Firebase: $e');
-  // }
-
-  // await FirebaseApi().initNotification();
   WidgetsFlutterBinding.ensureInitialized();
+  
+  print('=== INISIALISASI APLIKASI ===');
+  
+  if (Platform.isAndroid) {
+    await FlutterLocalNotificationsPlugin()
+        .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin>()
+        ?.requestNotificationsPermission();
+    print('Notification Permission Requested');
+  }
+  
+  await _requestPermissions();
+  print('Additional Permissions Requested');
+  
+  await Firebase.initializeApp();
+  print('Firebase Initialized');
+  
+  await AndroidAlarmManager.initialize();
+  print('Alarm Manager Initialized');
+  
+  await NotificationService.initialize();
+  print('Notification Service Initialized');
+  
+  await ArticleNotificationService.scheduleWeeklyArticleReminder();
+  print('Article Notifications Scheduled');
+  
+  const AndroidInitializationSettings initializationSettingsAndroid =
+      AndroidInitializationSettings('@mipmap/ic_launcher');
+      
+  const InitializationSettings initializationSettings =
+      InitializationSettings(android: initializationSettingsAndroid);
+      
+  final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
+      FlutterLocalNotificationsPlugin();
+      
+  await flutterLocalNotificationsPlugin.initialize(
+    initializationSettings,
+    onDidReceiveNotificationResponse: (NotificationResponse response) async {
+      try {
+        if (response.payload != null) {
+          final payloadData = json.decode(response.payload!);
+          
+          if (response.actionId == 'drink') {
+            // Update status menjadi 'sudah'
+            final updateResponse = await http.post(
+              Uri.parse('${base_url}api/JadwalObat/upload_bukti'),
+              body: {
+                'id_riwayat': payloadData['id_riwayat'].toString(),
+                'id_jadwal': payloadData['id_jadwal'].toString(),
+                'tanggal': DateTime.now().toString().split(' ')[0],
+                'status': 'sudah',
+              },
+            );
+            
+            if (updateResponse.statusCode == 200) {
+              print('Status berhasil diupdate: sudah minum');
+            } else {
+              print('Gagal update status: ${updateResponse.statusCode}');
+            }
+          } else if (response.actionId == 'snooze') {
+            // Jadwalkan ulang 5 menit kemudian
+            final prefs = await SharedPreferences.getInstance();
+            final String? medicineData = 
+                prefs.getString('medicine_${payloadData['id_jadwal']}');
+                
+            if (medicineData != null) {
+              final data = json.decode(medicineData);
+              await AlarmService.scheduleAlarm(
+                id: payloadData['id_jadwal'],
+                scheduleTime: DateTime.now().add(Duration(minutes: 5)),
+                obatName: data['nama_obat'],
+                dosis: data['dosis'],
+                satuan: data['satuan'],
+                selectedDay: data['selected_day'],
+              );
+              print('Alarm dijadwalkan ulang untuk 5 menit kemudian');
+            }
+          }
+        }
+      } catch (e) {
+        print('Error handling notification action: $e');
+      }
+    },
+  );
+
+  if (Platform.isAndroid) {
+    await flutterLocalNotificationsPlugin
+        .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin>()
+        ?.createNotificationChannel(const AndroidNotificationChannel(
+          'medicine_reminder',
+          'Medicine Reminders',
+          description: 'Notifikasi pengingat minum obat',
+          importance: Importance.max,
+          playSound: true,
+          enableVibration: true,
+        ));
+  }
+  
+  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+  
+  await FirebaseMessaging.instance.requestPermission(
+    alert: true,
+    badge: true,
+    sound: true,
+  );
+
+  try {
+    await NotificationService.initialize();
+    print('Additional Notification Service Initialized');
+  } catch (e) {
+    print('Error initializing Additional Notification Service: $e');
+  }
+
   await initializeDateFormatting('id_ID', null).then((_) {
+    print('Date Formatting Initialized');
     runApp(
       MultiProvider(
-        // Use MultiProvider to combine multiple providers
         providers: [
-          ChangeNotifierProvider(
-              create: (context) =>
-                  UserProvider()), // Your ChangeNotifierProvider
-          BlocProvider(create: (context) => NavBloc()), // Your BlocProvider
+          ChangeNotifierProvider(create: (context) => UserProvider()),
+          BlocProvider(create: (context) => NavBloc()),
         ],
         child: const MyApp(),
       ),
     );
   });
-
-  // AwesomeNotifications().initialize(
-  //   'resource://drawable/app_icon', // Ganti dengan ikon aplikasi Anda
-  //   [
-  //     NotificationChannel(
-  //       channelKey: 'scheduled_channel',
-  //       channelName: 'Scheduled Notifications',
-  //       channelDescription: 'Scheduled Notifications Channel',
-  //     ),
-  //   ],
-  // );
-
-  // // Panggil metode untuk membuat notifikasi berulang
-  // NotificationController.createRecurringNotifications();
+  
+  print('=== INISIALISASI SELESAI ===');
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
   const MyApp({super.key});
+
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    setupFCM();
+  }
+
+  Future<void> setupFCM() async {
+    try {
+      String? token = await FirebaseMessaging.instance.getToken();
+      
+      if (token != null) {
+        final prefs = await SharedPreferences.getInstance();
+        final userDataString = prefs.getString('user_data');
+        
+        if (userDataString != null) {
+          final userData = json.decode(userDataString);
+          
+          final response = await http.post(
+            Uri.parse('${base_url}api/Notification/update_token'),
+            body: {
+              'fcm_token': token,
+              'id_user': userData['id_user'].toString(),
+            },
+          );
+          
+          if (response.statusCode == 200) {
+            print('Token updated successfully: $token');
+          } else {
+            print('Failed to update token: ${response.statusCode}');
+          }
+        }
+      }
+
+      FirebaseMessaging.instance.onTokenRefresh.listen((newToken) async {
+        try {
+          final prefs = await SharedPreferences.getInstance();
+          final userDataString = prefs.getString('user_data');
+          
+          if (userDataString != null) {
+            final userData = json.decode(userDataString);
+            final response = await http.post(
+              Uri.parse('${base_url}api/Notification/update_token'),
+              body: {
+                'fcm_token': newToken,
+                'id_user': userData['id_user'].toString(),
+              },
+            );
+            
+            if (response.statusCode == 200) {
+              print('Token refreshed and updated successfully: $newToken');
+            } else {
+              print('Failed to update refreshed token: ${response.statusCode}');
+            }
+          }
+        } catch (e) {
+          print('Error in token refresh handler: $e');
+        }
+      });
+    } catch (e) {
+      print('Error in setupFCM: $e');
+    }
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.detached) {
+      _clearUserData();
+    }
+  }
+
+  Future<void> _clearUserData() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('access_token');
+    await prefs.remove('user_data');
+  }
 
   @override
   Widget build(BuildContext context) {
     return GetMaterialApp(
       debugShowCheckedModeBanner: false,
-      home: const LoginScreen(),
+      home: FutureBuilder(
+        future: Future.delayed(Duration(seconds: 3), () => checkLoginStatus()),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.done) {
+            return snapshot.data as Widget;
+          } else {
+            return SplashScreen();
+          }
+        },
+      ),
       onGenerateRoute: (settings) {
+        Widget page;
         switch (settings.name) {
           case '/dashboard':
-            return PageTransition(
-              child: const Dashboard(),
-              type: PageTransitionType.leftToRightWithFade,
-              alignment: Alignment.center,
-              duration: const Duration(milliseconds: 100),
-              settings: settings,
-            );
+            page = const Dashboard();
+            break;
           case '/kalori':
-            return PageTransition(
-              child: Kalori(),
-              type: PageTransitionType.leftToRightWithFade,
-              alignment: Alignment.center,
-              duration: const Duration(milliseconds: 100),
-              settings: settings,
-            );
+            page = Kalori();
+            break;
           case '/riwayat':
-            return PageTransition(
-              child: const Riwayat(),
-              type: PageTransitionType.leftToRightWithFade,
-              alignment: Alignment.center,
-              duration: const Duration(milliseconds: 100),
-              settings: settings,
-            );
+            page = const Riwayat();
+            break;
           case '/profile':
-            return PageTransition(
-              child: const Profile(),
-              type: PageTransitionType.leftToRightWithFade,
-              alignment: Alignment.center,
-              duration: const Duration(milliseconds: 100),
-              settings: settings,
-            );
+            page = const Profile();
+            break;
+          case '/artikel':
+            page = const Artikel();
+            break;
           case '/ttd':
-            return PageTransition(
-              child: InputDarah(),
-              type: PageTransitionType.leftToRightWithFade,
-              alignment: Alignment.center,
-              duration: const Duration(milliseconds: 100),
-              settings: settings,
-            );
+            page = InputDarah();
+            break;
           case '/beratbadan':
-            return PageTransition(
-              child: BeratBadan(),
-              type: PageTransitionType.leftToRightWithFade,
-              alignment: Alignment.center,
-              duration: const Duration(milliseconds: 100),
-              settings: settings,
-            );
-
-          // case '/profile':
-          //   return PageTransition(
-          //     child: Ranting(),
-          //     type: PageTransitionType.fade,
-          //     alignment: Alignment.center,
-          //     duration: Duration(milliseconds: 400),
-          //     settings: settings,
-          //   );
+            page = BeratBadan();
+            break;
+          case '/menu':
+            page = MenuPage();
+            break;
+          case '/kuesioner':
+            page = KuesionerPage();
+            break;
           default:
             return null;
         }
+
+        return PageRouteBuilder(
+          settings: settings,
+          pageBuilder: (context, animation, secondaryAnimation) => page,
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            return Stack(
+              children: [
+                FadeTransition(
+                  opacity: animation,
+                  child: child,
+                ),
+                if (animation.status == AnimationStatus.reverse)
+                  FadeTransition(
+                    opacity: Tween<double>(begin: 1.0, end: 0.0).animate(animation),
+                    child: Container(
+                      color: Colors.white,
+                      child: Center(
+                        child: Container(
+                          width: 100,
+                          height: 100,
+                          child: Lottie.asset(
+                            'assets/lottie/main_loading.json',
+                            fit: BoxFit.contain,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            );
+          },
+          transitionDuration: const Duration(milliseconds: 300),
+        );
       },
     );
+  }
 
-    // return BlocBuilder<NavBloc, NavState>(
-    //   builder: (context, state) {
-    //     if (state is NavSplash) {
-    //       return const Splashscreen();
-    //     } else if (state is NavHello) {
-    //       return const HelloScreen();
-    //     } else if (state is NavLogin) {
-    //       return const Login();
-    //     } else if (state is NavDashboard) {
-    //       return const Dashboard();
-    //     } else if (state is NavChat) {
-    //       return const ChatScreen();
-    //     } else {
-    //       return Scaffold(
-    //         body: Center(
-    //           child: Text(
-    //             'Terjadi kesalahan, silahkan hubungi developer!',
-    //             textAlign: TextAlign.center,
-    //             style: Theme.of(context).textTheme.headline4,
-    //           ),
-    //         ),
-    //       );
-    //     }
-    //   },
-    // );
+  Future<Widget> checkLoginStatus() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    String? token = prefs.getString('access_token');
+    if (token != null) {
+      return const Dashboard();
+    } else {
+      return const LoginScreen();
+    }
   }
 }
