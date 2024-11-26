@@ -7,9 +7,6 @@ class UserData {
   final String tinggiBadan; // Mengubah tipe data menjadi int
   late final String beratBadan;
   final String alamat;
-  final String kecamatan;
-  final String kabupaten;
-  final String provinsi;
   final String jekel;
   final String noTelp;
   final String tglDaftar;
@@ -25,9 +22,6 @@ class UserData {
       required this.tinggiBadan,
       required this.beratBadan,
       required this.alamat,
-      required this.kecamatan,
-      required this.kabupaten,
-      required this.provinsi,
       required this.jekel,
       required this.noTelp,
       required this.tglDaftar,
@@ -46,9 +40,6 @@ class UserData {
         tinggiBadan: json['tinggi_badan'],
         beratBadan: json['berat_badan'],
         alamat: json['alamat'],
-        kecamatan: json['kecamatan'],
-        kabupaten: json['kabupaten'],
-        provinsi: json['provinsi'],
         jekel: json['jekel'],
         noTelp: json['no_telp'],
         tglDaftar: json['tgl_daftar'],
@@ -66,9 +57,6 @@ class UserData {
       'tinggi_badan': tinggiBadan,
       'berat_badan': beratBadan,
       'alamat': alamat,
-      'kecamatan': kecamatan,
-      'kabupaten': kabupaten,
-      'provinsi': provinsi,
       'jekel': jekel,
       'no_telp': noTelp,
       'tgl_daftar': tglDaftar,
