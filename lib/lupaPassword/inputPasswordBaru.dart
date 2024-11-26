@@ -8,6 +8,7 @@ import 'package:http/http.dart' as http;
 
 import '../components/constants.dart';
 import '../util/core.dart';
+import '../util/colors.dart';
 
 class pasBaru extends StatefulWidget {
   const pasBaru({super.key});
@@ -130,53 +131,103 @@ class _pasBaruState extends State<pasBaru> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
         title: Text('Reset Password'),
+        titleTextStyle: TextStyle(
+            color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+        backgroundColor: PrimaryColor,
       ),
       body: Container(
-        padding: EdgeInsets.all(16.0),
+        height: MediaQuery.of(context).size.height,
         decoration: BoxDecoration(
           image: DecorationImage(
-            image: AssetImage("assets/images/bg_login.png"),
+            image: AssetImage("assets/images/bgmonevminumobatbaru.png"),
             fit: BoxFit.cover,
           ),
         ),
-        child: Column(
-          children: [
-            TextFormField(
-              controller: PasswordController,
-              textInputAction: TextInputAction.done,
-              obscureText: true,
-              cursorColor: kPrimaryColor,
-              decoration: InputDecoration(
-                hintText: "Masukan Password Baru Anda",
-                prefixIcon: Padding(
-                  padding: const EdgeInsets.all(defaultPadding),
-                  child: Icon(Icons.lock),
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: EdgeInsets.all(16.0),
+            child: Column(
+              children: [
+                SizedBox(height: 80),
+                TextFormField(
+                  controller: PasswordController,
+                  textInputAction: TextInputAction.done,
+                  obscureText: true,
+                  cursorColor: PrimaryColor,
+                  decoration: InputDecoration(
+                    hintText: "Masukan Password Baru Anda",
+                    prefixIcon: Padding(
+                      padding: const EdgeInsets.all(defaultPadding),
+                      child: Icon(Icons.lock, color: PrimaryColor),
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide(color: PrimaryColor, width: 1.5),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide(color: PrimaryColor, width: 1.5),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide(color: PrimaryColor, width: 2),
+                    ),
+                    filled: true,
+                    fillColor: Colors.white,
+                  ),
                 ),
-              ),
-            ),
-            SizedBox(height: 16.0),
-            TextFormField(
-              controller: RePasswordController,
-              textInputAction: TextInputAction.done,
-              obscureText: true,
-              cursorColor: kPrimaryColor,
-              decoration: InputDecoration(
-                hintText: "Masukan Ulang Password Baru Anda",
-                prefixIcon: Padding(
-                  padding: const EdgeInsets.all(defaultPadding),
-                  child: Icon(Icons.lock),
+                SizedBox(height: 16.0),
+                TextFormField(
+                  controller: RePasswordController,
+                  textInputAction: TextInputAction.done,
+                  obscureText: true,
+                  cursorColor: PrimaryColor,
+                  decoration: InputDecoration(
+                    hintText: "Masukan Ulang Password Baru Anda",
+                    prefixIcon: Padding(
+                      padding: const EdgeInsets.all(defaultPadding),
+                      child: Icon(Icons.lock, color: PrimaryColor),
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide(color: PrimaryColor, width: 1.5),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide(color: PrimaryColor, width: 1.5),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide(color: PrimaryColor, width: 2),
+                    ),
+                    filled: true,
+                    fillColor: Colors.white,
+                  ),
                 ),
-              ),
+                SizedBox(height: 32),
+                ElevatedButton(
+                  onPressed: _resetPass,
+                  style: ElevatedButton.styleFrom(
+                    foregroundColor: Colors.white,
+                    backgroundColor: PrimaryColor,
+                    padding: EdgeInsets.symmetric(horizontal: 50, vertical: 15),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  child: Text(
+                    "Submit".toUpperCase(),
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ],
             ),
-            Container(
-                child: ElevatedButton(
-              onPressed: () {
-                _resetPass();
-              },
-              child: Text('Submit'),
-            ))
-          ],
+          ),
         ),
       ),
     );
