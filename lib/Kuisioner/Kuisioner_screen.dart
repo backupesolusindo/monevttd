@@ -1,5 +1,6 @@
 import 'dart:convert';
-import 'dart:ffi';
+// import 'dart:ffi';
+ import 'dart:io' if (dart.library.html) 'dart:html';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:get/get.dart';
 import 'package:http/http.dart' as http;
