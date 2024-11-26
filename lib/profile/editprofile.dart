@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 import 'package:monitoringobat/bloc/nav/bottom_nav.dart';
 import 'package:monitoringobat/model/user.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:monitoringobat/util/colors.dart';
 
 import '../util/core.dart';
 
@@ -18,8 +19,12 @@ class EditProfile extends StatefulWidget {
 }
 
 class _EditProfileState extends State<EditProfile> {
-  String selectedGender = 'Laki-Laki'; // Default jenis kelamin
-  DateTime selectedDate = DateTime.now(); // Default tanggal lahir
+  String selectedGender = 'Laki-Laki';
+  DateTime selectedDate = DateTime.now();
+
+  XFile? _imageFile;
+  String Id = '';
+  String Nama = '';
 
   String? _validateNotEmpty(String? value) {
     if (value == null || value.isEmpty) {
@@ -28,7 +33,6 @@ class _EditProfileState extends State<EditProfile> {
     return null; // Data valid
   }
 
-  XFile? _imageFile;
   Future<void> _getImageFromGallery() async {
     final picker = ImagePicker();
     final pickedFile = await picker.pickImage(source: ImageSource.gallery);
@@ -55,25 +59,6 @@ class _EditProfileState extends State<EditProfile> {
     if (imagePath != null) {
       setState(() {
         _imageFile = XFile(imagePath);
-      });
-    }
-  }
-
-  final scaffoldKey = GlobalKey<ScaffoldState>();
-  String Id = '';
-  String Nama = '';
-
-  Future<void> loadUserData() async {
-    final prefs = await SharedPreferences.getInstance();
-    final userDataString = prefs.getString('user_data');
-
-    if (userDataString != null) {
-      final userData = UserData.fromJson(json.decode(userDataString));
-      print(userData.nama);
-
-      setState(() {
-        Id = userData.idUser.toString();
-        Nama = userData.nama;
       });
     }
   }
@@ -181,258 +166,204 @@ class _EditProfileState extends State<EditProfile> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      bottomNavigationBar: BottomNavBar(selected: 3),
-      body: SingleChildScrollView(
-        child: Stack(
-          children: [
-            Container(
-              height: 130,
-              width: double.infinity,
-              decoration: const BoxDecoration(color: Colors.amber),
-            ),
-            SafeArea(
-              child: Padding(
-                padding: EdgeInsets.symmetric(horizontal: 15.0),
-                child: Container(
-                  width: MediaQuery.of(context).size.width,
-                  child: Stack(
-                    children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Padding(padding: EdgeInsets.only(top: 64)),
-                          SizedBox(height: 20),
-                          Center(
-                            child: Container(
-                              width: MediaQuery.of(context).size.height * 0.4,
-                              height: 30,
-                              decoration: BoxDecoration(
-                                color: const Color.fromARGB(255, 98, 182, 250),
-                                borderRadius: BorderRadius.circular(30),
-                                boxShadow: kElevationToShadow[1],
-                              ),
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 5,
-                                vertical: 0,
-                              ),
-                              child: Center(
-                                child: Text(
-                                  'EditProfile',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                          SizedBox(height: 10),
-                          Container(
-                            alignment: Alignment.topCenter,
-                            child: GestureDetector(
-                              onTap: () {
-                                print("Tapped on circle image");
-                                _getImageFromGallery();
-                              },
-                              child: Container(
-                                width: 120,
-                                height: 120,
-                                clipBehavior: Clip.antiAlias,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                ),
-                                child: _imageFile != null
-                                    ? Image.file(
-                                        File(_imageFile!.path),
-                                        fit: BoxFit.cover,
-                                      )
-                                    : Icon(
-                                        Icons.camera_alt,
-                                        size: 40.0,
-                                        color: Colors.orange,
-                                      ),
-                              ),
-                            ),
-                          ),
-                          TextFormField(
-                            controller: usernameController,
-                            decoration: InputDecoration(hintText: 'username'),
-                          ),
-                          SizedBox(height: 10),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: TextFormField(
-                                  controller: emailController,
-                                  decoration:
-                                      InputDecoration(hintText: 'Email'),
-                                ),
-                              ),
-                              SizedBox(width: 10),
-                              Expanded(
-                                child: TextFormField(
-                                  controller: noTelpController,
-                                  decoration:
-                                      InputDecoration(hintText: 'no telepon'),
-                                ),
-                              ),
-                            ],
-                          ),
-                          SizedBox(
-                            height: 10,
-                          ),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: TextFormField(
-                                  controller: tinggiBadanController,
-                                  decoration:
-                                      InputDecoration(hintText: 'Tinggi (cm)'),
-                                ),
-                              ),
-                              SizedBox(width: 10),
-                              Expanded(
-                                child: TextFormField(
-                                  controller: beratBadanController,
-                                  decoration:
-                                      InputDecoration(hintText: 'Berat (kg)'),
-                                ),
-                              ),
-                            ],
-                          ),
-                          SizedBox(height: 10),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: DropdownButtonFormField<String>(
-                                  decoration: InputDecoration(
-                                      hintText: 'Jenis Kelamin'),
-                                  value: selectedGender,
-                                  onChanged: (value) {
-                                    // Tambahkan kode untuk menangani perubahan jenis kelamin
-                                    setState(() {
-                                      selectedGender = value!;
-                                    });
-                                  },
-                                  items: ['Laki-Laki', 'Perempuan']
-                                      .map((String value) {
-                                    return DropdownMenuItem<String>(
-                                      value: value,
-                                      child: Text(value),
-                                    );
-                                  }).toList(),
-                                ),
-                              ),
-                              SizedBox(width: 10),
-                              Expanded(
-                                child: TextFormField(
-                                  controller: tanggalLahirController,
-                                  onTap: () async {
-                                    // Tambahkan kode untuk menampilkan date picker
-                                    final DateTime? pickedDate =
-                                        await showDatePicker(
-                                      context: context,
-                                      initialDate: selectedDate,
-                                      firstDate: DateTime(1900),
-                                      lastDate: DateTime.now(),
-                                    );
-                                    if (pickedDate != null &&
-                                        pickedDate != selectedDate) {
-                                      setState(() {
-                                        selectedDate = pickedDate;
-                                        tanggalLahirController.text =
-                                            DateFormat('yyyy-MM-dd')
-                                                .format(selectedDate);
-                                      });
-                                    }
-                                  },
-                                  decoration: InputDecoration(
-                                      hintText: 'Tanggal Lahir'),
-                                ),
-                              ),
-                            ],
-                          ),
-                          SizedBox(height: 10),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: TextFormField(
-                                  controller: jabatanController,
-                                  decoration:
-                                      InputDecoration(hintText: 'Jabatan'),
-                                ),
-                              ),
-                              SizedBox(width: 10),
-                              Expanded(
-                                child: TextFormField(
-                                  controller: umurController,
-                                  decoration: InputDecoration(hintText: 'Umur'),
-                                ),
-                              ),
-                            ],
-                          ),
-                          SizedBox(height: 10),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: TextFormField(
-                                  controller: alamatController,
-                                  decoration:
-                                      InputDecoration(hintText: 'alamat'),
-                                ),
-                              ),
-                              SizedBox(width: 10),
-                              Expanded(
-                                child: TextFormField(
-                                  controller: kecamatanController,
-                                  decoration:
-                                      InputDecoration(hintText: 'kecamatan'),
-                                ),
-                              ),
-                            ],
-                          ),
-                          SizedBox(height: 10),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: TextFormField(
-                                  controller: kabupatenController,
-                                  decoration:
-                                      InputDecoration(hintText: 'Kabupaten'),
-                                ),
-                              ),
-                              SizedBox(width: 10),
-                              Expanded(
-                                child: TextFormField(
-                                  controller: provinsiController,
-                                  decoration:
-                                      InputDecoration(hintText: 'Provinsi'),
-                                ),
-                              ),
-                            ],
-                          ),
-                          SizedBox(
-                            height: 5,
-                          ),
-                          Center(
-                              child: Container(
-                            child: ElevatedButton(
-                              onPressed: () {
-                                registerUser();
-                              },
-                              child: Text('Simpan'),
-                            ),
-                          ))
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
+      extendBodyBehindAppBar: true,
+      appBar: AppBar(
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        title: Text('Edit Profile'),
+        titleTextStyle: TextStyle(
+            color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+      ),
+      // bottomNavigationBar: BottomNavBar(selected: 3),
+      body: Container(
+        decoration: BoxDecoration(
+          image: DecorationImage(
+            image: AssetImage('assets/images/bgmonevminumobatbaru.png'),
+            fit: BoxFit.cover,
+          ),
+        ),
+        child: SafeArea(
+          child: SingleChildScrollView(
+            child: Padding(
+              padding: EdgeInsets.symmetric(horizontal: 15.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SizedBox(height: 20),
+                  _buildProfileImage(),
+                  SizedBox(height: 20),
+                  _buildEditForm(),
+                  SizedBox(height: 20),
+                  _buildSaveButton(),
+                  SizedBox(height: 20),
+                ],
               ),
             ),
-          ],
+          ),
         ),
       ),
     );
+  }
+
+  Widget _buildProfileImage() {
+    return Center(
+      child: GestureDetector(
+        onTap: _getImageFromGallery,
+        child: CircleAvatar(
+          radius: 60,
+          backgroundColor: Colors.white,
+          backgroundImage: _imageFile != null ? FileImage(File(_imageFile!.path)) : null,
+          child: _imageFile == null
+              ? Icon(Icons.camera_alt, size: 40, color: PrimaryColor)
+              : null,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEditForm() {
+    return Container(
+      padding: EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.black.withOpacity(0.2),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Column(
+        children: [
+          _buildTextField(usernameController, 'Username'),
+          SizedBox(height: 10),
+          _buildTextField(emailController, 'Email'),
+          SizedBox(height: 10),
+          _buildTextField(noTelpController, 'No Telepon'),
+          SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(child: _buildTextField(tinggiBadanController, 'Tinggi (cm)')),
+              SizedBox(width: 10),
+              Expanded(child: _buildTextField(beratBadanController, 'Berat (kg)')),
+            ],
+          ),
+          // SizedBox(height: 10),
+          // _buildDropdownField(),
+          SizedBox(height: 10),
+          _buildDateField(),
+          // SizedBox(height: 10),
+          // _buildTextField(jabatanController, 'Jabatan'),
+          SizedBox(height: 10),
+          _buildTextField(alamatController, 'Alamat'),
+          // SizedBox(height: 10),
+          // _buildTextField(kecamatanController, 'Kecamatan'),
+          // SizedBox(height: 10),
+          // _buildTextField(kabupatenController, 'Kabupaten'),
+          // SizedBox(height: 10),
+          // _buildTextField(provinsiController, 'Provinsi'),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTextField(TextEditingController controller, String hint) {
+    return TextFormField(
+      controller: controller,
+      decoration: InputDecoration(
+        hintText: hint,
+        filled: true,
+        fillColor: Colors.white,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: BorderSide.none,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDropdownField() {
+    return DropdownButtonFormField<String>(
+      decoration: InputDecoration(
+        hintText: 'Jenis Kelamin',
+        filled: true,
+        fillColor: Colors.white,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: BorderSide.none,
+        ),
+      ),
+      value: selectedGender,
+      onChanged: (value) {
+        setState(() {
+          selectedGender = value!;
+        });
+      },
+      items: ['Laki-Laki', 'Perempuan'].map((String value) {
+        return DropdownMenuItem<String>(
+          value: value,
+          child: Text(value),
+        );
+      }).toList(),
+    );
+  }
+
+  Widget _buildDateField() {
+    return TextFormField(
+      controller: tanggalLahirController,
+      onTap: () async {
+        final DateTime? pickedDate = await showDatePicker(
+          context: context,
+          initialDate: selectedDate,
+          firstDate: DateTime(1900),
+          lastDate: DateTime.now(),
+        );
+        if (pickedDate != null && pickedDate != selectedDate) {
+          setState(() {
+            selectedDate = pickedDate;
+            tanggalLahirController.text = DateFormat('yyyy-MM-dd').format(selectedDate);
+          });
+        }
+      },
+      decoration: InputDecoration(
+        hintText: 'Tanggal Lahir',
+        filled: true,
+        fillColor: Colors.white,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: BorderSide.none,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSaveButton() {
+    return Container(
+      width: double.infinity,
+      child: ElevatedButton(
+        onPressed: registerUser,
+        child: Text('Simpan'),
+        style: ElevatedButton.styleFrom(
+          foregroundColor: Colors.white,
+          backgroundColor: PrimaryColor,
+          padding: EdgeInsets.symmetric(vertical: 16),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
+      ),
+    );
+  }
+
+  Future<void> loadUserData() async {
+    final prefs = await SharedPreferences.getInstance();
+    final userDataString = prefs.getString('user_data');
+
+    if (userDataString != null) {
+      final userData = UserData.fromJson(json.decode(userDataString));
+      print(userData.nama);
+
+      setState(() {
+        Id = userData.idUser.toString();
+        Nama = userData.nama;
+      });
+    }
   }
 }
