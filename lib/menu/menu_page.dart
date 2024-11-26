@@ -4,7 +4,7 @@ import 'package:monitoringobat/jadwal/tambah_jadwal.dart';
 import 'package:monitoringobat/obat/tambah_obat.dart';
 import 'package:monitoringobat/riwayat/riwayat_kuesioner.dart';
 import 'package:monitoringobat/util/colors.dart';
-import 'package:monitoringobat/kuesioner/kuesioner.dart';
+import 'package:monitoringobat/Kuisioner/kuesioner.dart';
 import 'package:monitoringobat/riwayat/riwayat_bb_hb.dart';
 import 'package:monitoringobat/profile/profile.dart';
 import 'package:monitoringobat/artikel/artikel.dart';
