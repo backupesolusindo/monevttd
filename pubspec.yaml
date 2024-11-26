@@ -48,7 +48,7 @@ dependencies:
   flutter_chart: ^0.1.6
   fl_chart: ^0.69.0 # diperbarui dari 0.64.0
   syncfusion_flutter_charts: ^27.1.53 # diperbarui dari 27.1.52
-  pusher_channels_flutter: ^2.2.1
+  # pusher_channels_flutter: ^2.2.1
   awesome_notifications: ^0.10.0 # diperbarui dari 0.8.2
   flutter_local_notifications: ^17.2.3 # diperbarui dari 16.1.0
   firebase_core: ^3.6.0 # diperbarui dari 2.17.0
@@ -67,7 +67,13 @@ dependencies:
   fading_edge_scrollview: ^4.1.1 # diperbarui dari 3.0.0
   win32: ^5.6.0 # diperbarui dari 5.0.9
   email_validator: ^3.0.0
-
+  photo_view: ^0.14.0
+  # workmanager: ^0.5.2
+  android_alarm_manager_plus: ^4.0.4
+  device_info_plus: ^9.1.1
+  permission_handler: ^11.2.1
+  flutter_foreground_task: ^6.1.2
+  pull_to_refresh: ^2.0.0
 
 dev_dependencies:
   flutter_test:
@@ -80,14 +86,14 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^5.0.0
-  # flutter_launcher_icons: ^0.9.0
+  flutter_launcher_icons: ^0.14.1
 
-# flutter_icons:
-#   android: true
-#   ios: true
-#   image_path: "assets/images/logoTTD.png"
-#   adaptive_icon_background: "assets/images/logoTTD.png"
-#   adaptive_icon_foreground: "assets/images/logoTTD.png"
+flutter_icons:
+  android: true
+  ios: true
+  image_path: "assets/images/logoTTD.png"
+  adaptive_icon_background: "assets/images/logoTTD.png"
+  adaptive_icon_foreground: "assets/images/logoTTD.png"
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
@@ -98,6 +104,7 @@ flutter:
     - assets/images/
     - assets/lottie/
     - assets/icons/
+    - assets/artikel/
   # The following line ensures that the Material Icons font is
   # included with your application, so that you can use the icons in
   # the material Icons class.
