@@ -32,6 +32,7 @@ import 'package:monitoringobat/dashboard/minum_obat.dart';
 import '../util/core.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:monitoringobat/dashboard/upload_bukti_obat.dart';
+import 'package:monitoringobat/model/video_edukasi.dart';
 
 class Dashboard extends StatefulWidget {
   const Dashboard({Key? key}) : super(key: key);
@@ -42,11 +43,11 @@ class Dashboard extends StatefulWidget {
 
 class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
   Map<String, dynamic>? forIMT;
-  late AnimationController _animation_controller;
-  late Animation<double> _anim_tb;
-  late Animation<double> _anim_bb;
-  late Animation<double> _anim_umur;
-  late Animation<double> _anim_imt;
+  AnimationController? _animationController;
+  Animation<double>? _anim_tb;
+  Animation<double>? _anim_bb;
+  Animation<double>? _anim_umur;
+  Animation<double>? _anim_imt;
 
   String imtText = '';
   String KeteranganImtText = '';
@@ -66,7 +67,9 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
 
   bool isLoaded = false;
 
-  late YoutubePlayerController _playercontroller;
+  YoutubePlayerController? _playercontroller;
+  VideoEdukasi? _currentVideo;
+  bool _isVideoLoaded = false;
 
   final DateTime now = DateTime.now();
   final DateFormat monthYearFormat = DateFormat.yMMMM('ID');
@@ -192,11 +195,13 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
     loadUserData();
     fetchJadwalTerdekat();
     fetchJadwalBulanan(DateTime.now().year, DateTime.now().month);
+    _getVideoEdukasi();
   }
 
   @override
   void dispose() {
-    _playercontroller.dispose();
+    _animationController?.dispose();
+    _playercontroller?.dispose();
     super.dispose();
   }
 
@@ -235,7 +240,7 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
 
   Future<void> _initializeAsyncOperations() async {
     // Initialize the AnimationController
-    _animation_controller = AnimationController(
+    _animationController = AnimationController(
       duration: Duration(seconds: 2), // Set the duration of the animation
       vsync: this,
     );
@@ -260,63 +265,53 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
 
       // Define the tween to animate from 0 to the target number
       _anim_tb = Tween<double>(begin: 0, end: tinggiBadanCm)
-          .animate(_animation_controller)
+          .animate(_animationController!)
         ..addListener(() {
           setState(() {});
         });
       _anim_bb = Tween<double>(begin: 0, end: beratBadanKg)
-          .animate(_animation_controller)
+          .animate(_animationController!)
         ..addListener(() {
           setState(() {});
         });
       _anim_umur = Tween<double>(begin: 0, end: double.parse(umur))
-          .animate(_animation_controller)
+          .animate(_animationController!)
         ..addListener(() {
           setState(() {});
         });
       // Start the animation
-      _animation_controller.forward();
+      _animationController!.forward();
     });
   }
 
   Future<void> fetchDataDarah() async {
-    print("id :" + Id);
-    final Uri uri =
-        Uri.parse(base_url + 'api/Darah/tambahdarahall?id_user=$Id');
-    final response = await http.get(uri);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      var accessToken = prefs.getString('access_token');
+      var id = prefs.getString('id_user');
 
-    print(response.body);
+      final response = await http.get(
+        Uri.parse('${base_url}api/get_data_darah/$id'),
+        headers: {
+          'Authorization': 'Bearer $accessToken',
+        },
+      );
 
-    arTambahDarah.clear();
-
-    if (response.statusCode == 200) {
-      final jsonData = json.decode(response.body);
-      final responseList = jsonData['data'];
-
-      int no = 0;
-      setState(() {
-        var datenow = DateTime.now();
-        var angkatgl = datenow.day.toString();
-        var angkabln = datenow.month.toString();
-        if (datenow.day < 10) {
-          angkatgl = "0" + angkatgl.toString();
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data != null && data['data'] != null) {
+          setState(() {
+            // Handle data
+            var dataList = data['data'] as List;
+            // Process dataList
+          });
+        } else {
+          print('No data available');
         }
-        if (datenow.month < 10) {
-          angkabln = "0" + angkabln.toString();
-        }
-        var tanggal = datenow.year.toString() + "-" + angkabln + "-" + angkatgl;
-        responseList.forEach((element) {
-          arTambahDarah.add(element['tanggal']);
-        });
-        if (arTambahDarah.contains(tanggal)) {
-          _isBelumMinum = false;
-        }
-        print("Belum Minum" + tanggal.toString());
-      });
-    } else {
-      print(response.body);
+      }
+    } catch (e) {
+      print('Error fetching darah data: $e');
     }
-    print(arTambahDarah);
   }
 
   Future<void> fetchVideo() async {
@@ -329,9 +324,9 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
         loop: true,
       ),
     );
-    _playercontroller.addListener(() {
-      if (_playercontroller.value.hasError) {
-        print('Error: ${_playercontroller.value.errorCode}');
+    _playercontroller!.addListener(() {
+      if (_playercontroller!.value.hasError) {
+        print('Error: ${_playercontroller!.value.errorCode}');
       }
     });
   }
@@ -692,6 +687,233 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
           ),
         );
       },
+    );
+  }
+
+  Future<void> _getVideoEdukasi() async {
+    try {
+      setState(() {
+        _isVideoLoaded = false;
+      });
+
+      final prefs = await SharedPreferences.getInstance();
+      var accessToken = prefs.getString('access_token');
+
+      final response = await http.get(
+        Uri.parse('${base_url}api/VideoEdukasi/get_active_video'),
+        headers: {
+          'Authorization': 'Bearer $accessToken',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['status'] == 'success' && data['data'] != null) {
+          var videoData = data['data'];
+          videoData['id_video'] = int.parse(videoData['id_video'].toString());
+          
+          setState(() {
+            _currentVideo = VideoEdukasi.fromJson(videoData);
+            _initializeYoutubePlayer();
+          });
+        } else {
+          setState(() {
+            _currentVideo = null;
+            _isVideoLoaded = true;
+          });
+        }
+      } else {
+        print('Error response: ${response.body}');
+        setState(() {
+          _currentVideo = null;
+          _isVideoLoaded = true;
+        });
+      }
+    } catch (e) {
+      print('Error getting video: $e');
+      setState(() {
+        _currentVideo = null;
+        _isVideoLoaded = true;
+      });
+    }
+  }
+
+  void _initializeYoutubePlayer() {
+    if (_currentVideo != null) {
+      _playercontroller = YoutubePlayerController(
+        initialVideoId: _currentVideo!.youtubeId,
+        flags: YoutubePlayerFlags(
+          autoPlay: false,
+          mute: false,
+          controlsVisibleAtStart: true,
+        ),
+      );
+      setState(() {
+        _isVideoLoaded = true;
+      });
+    } else {
+      setState(() {
+        _isVideoLoaded = true;
+      });
+    }
+  }
+
+  Widget _buildVideoSection() {
+    if (!_isVideoLoaded) {
+      return Container(
+        margin: EdgeInsets.symmetric(horizontal: 16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(15),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.grey.withOpacity(0.3),
+              spreadRadius: 2,
+              blurRadius: 5,
+              offset: Offset(0, 3),
+            ),
+          ],
+        ),
+        child: Center(
+          child: Padding(
+            padding: EdgeInsets.all(20),
+            child: CircularProgressIndicator(),
+          ),
+        ),
+      );
+    }
+
+    if (_currentVideo == null || _playercontroller == null) {
+      return Container(
+        margin: EdgeInsets.symmetric(horizontal: 16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(15),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.grey.withOpacity(0.3),
+              spreadRadius: 2,
+              blurRadius: 5,
+              offset: Offset(0, 3),
+            ),
+          ],
+        ),
+        child: Center(
+          child: Padding(
+            padding: EdgeInsets.all(20),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.video_library_outlined,
+                  size: 80,
+                  color: Colors.grey[400],
+                ),
+                SizedBox(height: 16),
+                Text(
+                  'Belum ada video edukasi',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.grey[700],
+                  ),
+                ),
+                SizedBox(height: 8),
+                Text(
+                  'Video edukasi akan ditampilkan di sini ketika tersedia',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey[600],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Container(
+      margin: EdgeInsets.symmetric(horizontal: 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(15),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.3),
+            spreadRadius: 2,
+            blurRadius: 5,
+            offset: Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: EdgeInsets.all(16),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.play_circle_outline,
+                  color: Colors.blue,
+                  size: 24,
+                ),
+                SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    _currentVideo!.judul,
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (_currentVideo!.deskripsi.isNotEmpty)
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Text(
+                _currentVideo!.deskripsi,
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey[600],
+                ),
+              ),
+            ),
+          ClipRRect(
+            borderRadius: BorderRadius.only(
+              bottomLeft: Radius.circular(15),
+              bottomRight: Radius.circular(15),
+            ),
+            child: YoutubePlayerBuilder(
+              player: YoutubePlayer(
+                controller: _playercontroller!,
+                showVideoProgressIndicator: true,
+                progressIndicatorColor: Colors.blueAccent,
+                progressColors: ProgressBarColors(
+                  playedColor: Colors.blue,
+                  handleColor: Colors.blueAccent,
+                ),
+                onReady: () {
+                  print('Player is ready.');
+                },
+                onEnded: (data) {
+                  _playercontroller?.seekTo(Duration.zero);
+                },
+              ),
+              builder: (context, player) {
+                return Column(
+                  children: [player],
+                );
+              },
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -1188,59 +1410,7 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
                       ),
                     ),
                   ),
-                  Container(
-                      margin:
-                          EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                      padding: EdgeInsets.all(4),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(16.0),
-                        boxShadow: [boxShadow],
-                      ),
-                      child: YoutubePlayerBuilder(
-                        // YoutubePlayerBuilder
-                        player: YoutubePlayer(
-                          controller: _playercontroller,
-                          showVideoProgressIndicator: true,
-                          progressIndicatorColor: Colors.blueAccent,
-                          topActions: <Widget>[
-                            const SizedBox(width: 8.0),
-                            Expanded(
-                              child: Text(
-                                _playercontroller.metadata.title,
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 18.0,
-                                ),
-                                overflow: TextOverflow.ellipsis,
-                                maxLines: 1,
-                              ),
-                            ),
-                            IconButton(
-                              icon: const Icon(
-                                Icons.settings,
-                                color: Colors.white,
-                                size: 25.0,
-                              ),
-                              onPressed: () {
-                                print('Settings Tapped!');
-                                _playercontroller.play();
-                              },
-                            ),
-                          ],
-                          onReady: () {
-                            print('Player is ready.');
-                          },
-                        ),
-                        builder: (context, player) {
-                          return Column(
-                            children: [
-                              // some widgets
-                              player,
-                              //some other widgets
-                            ],
-                          );
-                        },
-                      )),
+                  _buildVideoSection(),
                   SizedBox(
                     height: 10,
                   ),
