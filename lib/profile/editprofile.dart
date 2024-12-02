@@ -166,19 +166,23 @@ class _EditProfileState extends State<EditProfile> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      extendBodyBehindAppBar: true,
+      backgroundColor: Colors.white,
       appBar: AppBar(
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
         title: Text('Edit Profile'),
         titleTextStyle: TextStyle(
-            color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
+          color: Colors.white,
+          fontSize: 20,
+          fontWeight: FontWeight.bold,
+        ),
+        backgroundColor: PrimaryColor,
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back),
+          color: Colors.white,
+          onPressed: () {
+            Navigator.pop(context);
+          },
+        ),
       ),
-      // bottomNavigationBar: BottomNavBar(selected: 3),
       body: Container(
         decoration: BoxDecoration(
           image: DecorationImage(
@@ -186,23 +190,45 @@ class _EditProfileState extends State<EditProfile> {
             fit: BoxFit.cover,
           ),
         ),
-        child: SafeArea(
-          child: SingleChildScrollView(
-            child: Padding(
-              padding: EdgeInsets.symmetric(horizontal: 15.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  SizedBox(height: 20),
-                  _buildProfileImage(),
-                  SizedBox(height: 20),
-                  _buildEditForm(),
-                  SizedBox(height: 20),
-                  _buildSaveButton(),
-                  SizedBox(height: 20),
-                ],
+        child: SingleChildScrollView(
+          child: Column(
+            children: [
+              // SizedBox(height: 20),
+              // _buildProfileImage(),
+              SizedBox(height: 20),
+              _buildEditForm(),
+              SizedBox(height: 20),
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Container(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      updateProfile();
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: PrimaryColor,
+                      padding: EdgeInsets.symmetric(vertical: 15),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                    child: Text(
+                      'Simpan Perubahan',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ),
               ),
-            ),
+              Container(
+                color: Colors.transparent,
+                height: MediaQuery.of(context).size.height * 0.2,
+              ),
+            ],
           ),
         ),
       ),
@@ -227,10 +253,18 @@ class _EditProfileState extends State<EditProfile> {
 
   Widget _buildEditForm() {
     return Container(
+      margin: EdgeInsets.symmetric(horizontal: 16),
       padding: EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.2),
+        color: Colors.white.withOpacity(0.9),
         borderRadius: BorderRadius.circular(10),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 10,
+            offset: Offset(0, 5),
+          ),
+        ],
       ),
       child: Column(
         children: [
@@ -242,25 +276,19 @@ class _EditProfileState extends State<EditProfile> {
           SizedBox(height: 10),
           Row(
             children: [
-              Expanded(child: _buildTextField(tinggiBadanController, 'Tinggi (cm)')),
+              Expanded(
+                child: _buildTextField(tinggiBadanController, 'Tinggi (cm)'),
+              ),
               SizedBox(width: 10),
-              Expanded(child: _buildTextField(beratBadanController, 'Berat (kg)')),
+              Expanded(
+                child: _buildTextField(beratBadanController, 'Berat (kg)'),
+              ),
             ],
           ),
           // SizedBox(height: 10),
-          // _buildDropdownField(),
-          SizedBox(height: 10),
-          _buildDateField(),
-          // SizedBox(height: 10),
-          // _buildTextField(jabatanController, 'Jabatan'),
+          // _buildDateField(),
           SizedBox(height: 10),
           _buildTextField(alamatController, 'Alamat'),
-          // SizedBox(height: 10),
-          // _buildTextField(kecamatanController, 'Kecamatan'),
-          // SizedBox(height: 10),
-          // _buildTextField(kabupatenController, 'Kabupaten'),
-          // SizedBox(height: 10),
-          // _buildTextField(provinsiController, 'Provinsi'),
         ],
       ),
     );
@@ -275,7 +303,15 @@ class _EditProfileState extends State<EditProfile> {
         fillColor: Colors.white,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
-          borderSide: BorderSide.none,
+          borderSide: BorderSide(color: PrimaryColor),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: BorderSide(color: PrimaryColor.withOpacity(0.5)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: BorderSide(color: PrimaryColor),
         ),
       ),
     );
@@ -310,17 +346,19 @@ class _EditProfileState extends State<EditProfile> {
   Widget _buildDateField() {
     return TextFormField(
       controller: tanggalLahirController,
+      readOnly: true, // Agar user tidak bisa mengetik manual
       onTap: () async {
         final DateTime? pickedDate = await showDatePicker(
           context: context,
-          initialDate: selectedDate,
+          initialDate: tanggalLahirController.text.isNotEmpty 
+              ? DateTime.parse(tanggalLahirController.text)
+              : DateTime.now(),
           firstDate: DateTime(1900),
           lastDate: DateTime.now(),
         );
-        if (pickedDate != null && pickedDate != selectedDate) {
+        if (pickedDate != null) {
           setState(() {
-            selectedDate = pickedDate;
-            tanggalLahirController.text = DateFormat('yyyy-MM-dd').format(selectedDate);
+            tanggalLahirController.text = DateFormat('yyyy-MM-dd').format(pickedDate);
           });
         }
       },
@@ -332,22 +370,7 @@ class _EditProfileState extends State<EditProfile> {
           borderRadius: BorderRadius.circular(10),
           borderSide: BorderSide.none,
         ),
-      ),
-    );
-  }
-
-  Widget _buildSaveButton() {
-    return Container(
-      width: double.infinity,
-      child: ElevatedButton(
-        onPressed: registerUser,
-        child: Text('Simpan'),
-        style: ElevatedButton.styleFrom(
-          foregroundColor: Colors.white,
-          backgroundColor: PrimaryColor,
-          padding: EdgeInsets.symmetric(vertical: 16),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        ),
+        suffixIcon: Icon(Icons.calendar_today),
       ),
     );
   }
@@ -358,12 +381,110 @@ class _EditProfileState extends State<EditProfile> {
 
     if (userDataString != null) {
       final userData = UserData.fromJson(json.decode(userDataString));
-      print(userData.nama);
-
       setState(() {
         Id = userData.idUser.toString();
         Nama = userData.nama;
+        
+        // Set nilai awal untuk semua controller
+        usernameController.text = userData.username;
+        namaController.text = userData.nama;
+        emailController.text = userData.email;
+        noTelpController.text = userData.noTelp;
+        tanggalLahirController.text = userData.tglLahir;
+        tinggiBadanController.text = userData.tinggiBadan;
+        beratBadanController.text = userData.beratBadan;
+        alamatController.text = userData.alamat;
+        jenisKelaminController.text = userData.jekel;
+        
+        // Set nilai untuk dropdown jenis kelamin jika ada
+        selectedGender = userData.jekel;
       });
     }
+  }
+
+  Future<void> updateProfile() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('access_token');
+      
+      if (token == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Sesi telah berakhir, silakan login kembali'))
+        );
+        return;
+      }
+
+      final response = await http.post(
+        Uri.parse('${base_url}api/User/update_profile'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({
+          'id_user': Id,
+          'nama': namaController.text,
+          'email': emailController.text,
+          'no_telp': noTelpController.text,
+          'jekel': jenisKelaminController.text,
+          'alamat': alamatController.text,
+          'tgl_lahir': tanggalLahirController.text,
+          'tinggi_badan': tinggiBadanController.text,
+          'berat_badan': beratBadanController.text,
+        }),
+      );
+
+      print('Response status: ${response.statusCode}');
+      print('Response body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final responseData = jsonDecode(response.body);
+        
+        if (responseData['status'] == true) {
+          final userData = UserData(
+            idUser: int.parse(responseData['data']['id_user']), // Konversi string ke int
+            username: responseData['data']['username'],
+            nama: responseData['data']['nama'],
+            tglLahir: responseData['data']['tgl_lahir'],
+            tinggiBadan: responseData['data']['tinggi_badan'],
+            beratBadan: responseData['data']['berat_badan'],
+            alamat: responseData['data']['alamat'],
+            jekel: responseData['data']['jekel'],
+            noTelp: responseData['data']['no_telp'],
+            email: responseData['data']['email'],
+            jabatan: responseData['data']['jabatan'],
+            tglDaftar: responseData['data']['tgl_daftar'],
+            umur: responseData['data']['umur'],
+          );
+          
+          await prefs.setString('user_data', jsonEncode(userData.toJson()));
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Profil berhasil diperbarui'))
+          );
+          
+          Navigator.pop(context, true);
+        } else {
+          throw Exception(responseData['message']);
+        }
+      } else {
+        throw Exception('Gagal memperbarui profil. Status: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Error detail: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Terjadi kesalahan: $e'))
+      );
+    }
+  }
+
+  int calculateAge(String birthDate) {
+    final birth = DateTime.parse(birthDate);
+    final now = DateTime.now();
+    int age = now.year - birth.year;
+    if (now.month < birth.month || 
+        (now.month == birth.month && now.day < birth.day)) {
+      age--;
+    }
+    return age;
   }
 }

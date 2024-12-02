@@ -15,6 +15,8 @@ import 'package:monitoringobat/utils/auth_utils.dart';
 import 'package:monitoringobat/model/user.dart';
 import 'package:monitoringobat/profile/editprofile.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:http/http.dart' as http;
+import '../util/core.dart';
 
 class Profile extends StatefulWidget {
   const Profile({super.key});
@@ -31,27 +33,59 @@ class _ProfileState extends State<Profile> {
   String TB = '';
   String telp = '';
   String username = '';
+  String alamat = '';
+  String Id = '';
+  String jekel = '';
 
   bool isLoading = true;
 
   Future<void> loadUserData() async {
-    final prefs = await SharedPreferences.getInstance();
-    final userDataString = prefs.getString('user_data');
-    if (userDataString != null) {
-      final userData = UserData.fromJson(json.decode(userDataString));
-      setState(() {
-        if (userData.nama != "" && userData.nama != null) {
-          Nama = userData.nama;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final userDataString = prefs.getString('user_data');
+      final token = prefs.getString('access_token');
+
+      if (userDataString != null) {
+        final userData = UserData.fromJson(json.decode(userDataString));
+        Id = userData.idUser.toString();
+        
+        // Ambil data dari API
+        final response = await http.get(
+          Uri.parse('${base_url}api/User/profil?id_user=$Id'),
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer $token',
+          },
+        );
+
+        if (response.statusCode == 200) {
+          final responseData = jsonDecode(response.body);
+          if (responseData['message']['status'] == 200) {
+            final data = responseData['response'];
+            setState(() {
+              username = data['username'] ?? '';
+              tglLahir = data['tgl_lahir'] ?? '';
+              BB = data['berat_badan'] ?? '';
+              TB = data['tinggi_badan'] ?? '';
+              telp = data['no_telp'] ?? '';
+              alamat = data['alamat'] ?? '';
+              if (data['nama'] != "" && data['nama'] != null) {
+                Nama = data['nama'];
+              } else {
+                Nama = data['username'];
+              }
+              Email = data['email'] ?? '';
+            });
+          }
         } else {
-          Nama = userData.username;
+          throw Exception('Gagal memuat data profil');
         }
-        Email = userData.email;
-        tglLahir = userData.tglLahir;
-        BB = userData.beratBadan;
-        TB = userData.tinggiBadan;
-        telp = userData.noTelp;
-        username = userData.username;
-      });
+      }
+    } catch (e) {
+      print('Error loading user data: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Terjadi kesalahan saat memuat data'))
+      );
     }
   }
 
@@ -99,8 +133,83 @@ class _ProfileState extends State<Profile> {
     }
   }
 
+  Future<void> fetchUserData() async {
+    try {
+      setState(() {
+        isLoading = true;
+      });
+
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('access_token');
+      final userDataString = prefs.getString('user_data');
+      
+      if (userDataString == null || token == null) {
+        print('User data or token not found in SharedPreferences');
+        return;
+      }
+
+      final userData = UserData.fromJson(json.decode(userDataString));
+      final userId = userData.idUser.toString();
+
+      print('Fetching user data for ID: $userId');
+      print('URL: ${base_url}api/User/get_user_by_id/$userId');
+      
+      final response = await http.get(
+        Uri.parse('${base_url}api/User/get_user_by_id/$userId'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      print('Response status: ${response.statusCode}');
+      print('Response body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final responseData = jsonDecode(response.body);
+        
+        if (responseData['status'] == true && responseData['data'] != null) {
+          final data = responseData['data'];
+          if (mounted) {
+            setState(() {
+              username = data['username'] ?? '';
+              Nama = data['nama'] ?? data['username'] ?? '';
+              Email = data['email'] ?? '';
+              tglLahir = data['tgl_lahir'] ?? '';
+              BB = data['berat_badan']?.toString() ?? '0';
+              TB = data['tinggi_badan']?.toString() ?? '0';
+              telp = data['no_telp'] ?? '';
+              alamat = data['alamat'] ?? '';
+              jekel = data['jekel'] ?? '';
+              isLoading = false;
+            });
+            print('Data berhasil diupdate: $Nama, $Email, $tglLahir, $BB, $TB, $telp, $alamat');
+          }
+        } else {
+          throw Exception(responseData['message'] ?? 'Data tidak valid');
+        }
+      } else {
+        throw Exception('Gagal memuat data profil. Status: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Error fetching user data: $e');
+      if (mounted) {
+        setState(() {
+          isLoading = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Gagal memuat data profil: ${e.toString()}'),
+            duration: Duration(seconds: 3),
+          )
+        );
+      }
+    }
+  }
+
   Future<void> loadData() async {
-    await loadUserData();
+    await loadUserData(); // Tetap load dari shared preferences dulu
+    await fetchUserData(); // Kemudian update dengan data dari API
     await loadProfileImage();
     // Simulasi loading selama 1 detik
     await Future.delayed(Duration(seconds: 1));
@@ -112,7 +221,7 @@ class _ProfileState extends State<Profile> {
   @override
   void initState() {
     super.initState();
-    loadData();
+    fetchUserData();
   }
 
   @override
@@ -130,48 +239,76 @@ class _ProfileState extends State<Profile> {
             color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
         backgroundColor: Colors.transparent,
         elevation: 0,
+        actions: [
+          IconButton(
+            icon: Icon(Icons.edit, color: Colors.white),
+            onPressed: () async {
+              // Navigasi ke halaman edit dan tunggu hasilnya
+              final result = await Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => EditProfile()),
+              );
+              // Jika kembali dengan hasil true, refresh data
+              if (result == true) {
+                fetchUserData();
+              }
+            },
+          ),
+        ],
       ),
       bottomNavigationBar: BottomNavBar(selected: 4),
-      body: Container(
-        decoration: BoxDecoration(
-          image: DecorationImage(
-            image: AssetImage('assets/images/bgmonevminumobatbaru.png'),
-            fit: BoxFit.cover,
-          ),
-        ),
-        child: isLoading
-            ? Center(
-                child: SizedBox(
-                  width: 100,
-                  height: 100,
-                  child: Lottie.asset('assets/lottie/main_loading.json'),
-                ),
-              )
-            : SafeArea(
-                child: SingleChildScrollView(
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(
-                      minHeight: MediaQuery.of(context).size.height -
-                          MediaQuery.of(context).padding.top -
-                          MediaQuery.of(context).padding.bottom,
-                    ),
-                    child: IntrinsicHeight(
+      body: RefreshIndicator(
+        onRefresh: fetchUserData,
+        child: SingleChildScrollView(
+          physics: AlwaysScrollableScrollPhysics(),
+          child: Container(
+            decoration: BoxDecoration(
+              image: DecorationImage(
+                image: AssetImage('assets/images/bgmonevminumobatbaru.png'),
+                fit: BoxFit.cover,
+              ),
+            ),
+            child: isLoading
+                ? Center(
+                    child: Container(
+                      height: MediaQuery.of(context).size.height,
                       child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          _buildHeader(),
-                          SizedBox(height: 20),
-                          _buildProfileInfo(),
-                          SizedBox(height: 20),
-                          _buildEditButton(),
-                          SizedBox(height: 10),
-                          _buildLogoutButton(),
-                          SizedBox(height: 20),
+                          SizedBox(
+                            width: 100,
+                            height: 100,
+                            child: Lottie.asset('assets/lottie/main_loading.json'),
+                          ),
                         ],
                       ),
                     ),
+                  )
+                : SafeArea(
+                    child: SingleChildScrollView(
+                      child: ConstrainedBox(
+                        constraints: BoxConstraints(
+                          minHeight: MediaQuery.of(context).size.height -
+                              MediaQuery.of(context).padding.top -
+                              MediaQuery.of(context).padding.bottom,
+                        ),
+                        child: IntrinsicHeight(
+                          child: Column(
+                            children: [
+                              _buildProfileInfo(),
+                              SizedBox(height: 20),
+                              _buildEditButton(),
+                              SizedBox(height: 10),
+                              _buildLogoutButton(),
+                              SizedBox(height: 20),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
                   ),
-                ),
-              ),
+          ),
+        ),
       ),
     );
   }
@@ -288,44 +425,6 @@ class _ProfileState extends State<Profile> {
     }
   }
 
-  Widget _buildHeader() {
-    return Container(
-      padding: EdgeInsets.all(16),
-      child: Column(
-        children: [
-          GestureDetector(
-            onTap: _showImageOptions,
-            child: CircleAvatar(
-              radius: 50,
-              backgroundColor: Colors.white,
-              backgroundImage:
-                  _imageFile != null ? FileImage(File(_imageFile!.path)) : null,
-              child: _imageFile == null
-                  ? Icon(Icons.camera_alt, size: 40, color: PrimaryColor)
-                  : null,
-            ),
-          ),
-          SizedBox(height: 16),
-          Text(
-            Nama,
-            style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
-            ),
-          ),
-          Text(
-            Email,
-            style: TextStyle(
-              fontSize: 16,
-              color: Colors.white70,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildProfileInfo() {
     return Container(
       margin: EdgeInsets.symmetric(horizontal: 16),
@@ -338,10 +437,14 @@ class _ProfileState extends State<Profile> {
       child: Column(
         children: [
           _buildInfoRow('Username', username),
+          // _buildInfoRow('Nama', Nama),
+          _buildInfoRow('Email', Email),
           _buildInfoRow('Tanggal Lahir', tglLahir),
           _buildInfoRow('Berat Badan', '$BB kg'),
           _buildInfoRow('Tinggi Badan', '$TB cm'),
           _buildInfoRow('No. Telepon', telp),
+          _buildInfoRow('Jenis Kelamin', jekel),
+          _buildInfoRow('Alamat', alamat),
         ],
       ),
     );
@@ -352,10 +455,23 @@ class _ProfileState extends State<Profile> {
       padding: EdgeInsets.symmetric(vertical: 8),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: TextStyle(fontSize: 16, color: Colors.grey)),
-          Text(value,
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          Expanded(
+            flex: 2,
+            child: Text(
+              label, 
+              style: TextStyle(fontSize: 14, color: Colors.grey)
+            ),
+          ),
+          Expanded(
+            flex: 3,
+            child: Text(
+              value,
+              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
+              textAlign: TextAlign.right,
+            ),
+          ),
         ],
       ),
     );
@@ -366,19 +482,31 @@ class _ProfileState extends State<Profile> {
       width: double.infinity,
       padding: EdgeInsets.symmetric(horizontal: 16),
       child: ElevatedButton(
-        onPressed: () {
-          Navigator.push(
+        onPressed: () async {
+          // Navigasi ke halaman edit dan tunggu hasilnya
+          final result = await Navigator.push(
             context,
             MaterialPageRoute(builder: (context) => EditProfile()),
           );
+          // Jika kembali dengan hasil true, refresh data
+          if (result == true) {
+            fetchUserData();
+          }
         },
-        child: Text('Edit Profil', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+        child: Text('Edit Profil', 
+          style: TextStyle(
+            color: Colors.white, 
+            fontSize: 16, 
+            fontWeight: FontWeight.bold
+          )
+        ),
         style: ElevatedButton.styleFrom(
           foregroundColor: Colors.white,
           backgroundColor: PrimaryColor,
           padding: EdgeInsets.symmetric(vertical: 16),
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10)
+          ),
         ),
       ),
     );

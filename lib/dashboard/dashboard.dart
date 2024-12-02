@@ -152,7 +152,8 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
           final data = json.decode(response.body);
           if (data['response'] != null) {
             setState(() {
-              jadwalPerTanggal = Map<String, List<dynamic>>.from(data['response']);
+              jadwalPerTanggal =
+                  Map<String, List<dynamic>>.from(data['response']);
               // Urutkan jadwal per tanggal berdasarkan waktu
               jadwalPerTanggal.forEach((tanggal, jadwalList) {
                 jadwalList.sort((a, b) => a['waktu'].compareTo(b['waktu']));
@@ -194,6 +195,7 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
     fetchVideo();
     loadUserData();
     fetchJadwalTerdekat();
+    Timer.periodic(Duration(minutes: 5), (Timer t) => fetchJadwalTerdekat());
     fetchJadwalBulanan(DateTime.now().year, DateTime.now().month);
     _getVideoEdukasi();
   }
@@ -621,23 +623,23 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
                           'ID Riwayat yang tersimpan: ${prefs.getInt('selected_riwayat_id')}');
 
                       // Ambil foto
-                      final ImagePicker _picker = ImagePicker();
-                      final XFile? photo = await _picker.pickImage(
-                        source: ImageSource.camera,
-                        preferredCameraDevice: CameraDevice.rear,
-                      );
+                      // final ImagePicker _picker = ImagePicker();
+                      // final XFile? photo = await _picker.pickImage(
+                      //   source: ImageSource.camera,
+                      //   preferredCameraDevice: CameraDevice.rear,
+                      // );
 
-                      if (photo != null) {
-                        Navigator.pop(context); // Tutup bottom sheet
-                        await Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => UploadBuktiObat(
-                              imageFile: File(photo.path),
-                            ),
-                          ),
-                        );
-                      }
+                      // if (photo != null) {
+                      //   Navigator.pop(context); // Tutup bottom sheet
+                      //   await Navigator.push(
+                      //     context,
+                      //     MaterialPageRoute(
+                      //       builder: (context) => UploadBuktiObat(
+                      //         imageFile: File(photo.path),
+                      //       ),
+                      //     ),
+                      //   );
+                      // }
                     } catch (e) {
                       print('Error dalam proses: $e');
                       ScaffoldMessenger.of(context).showSnackBar(
@@ -709,9 +711,10 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         if (data['status'] == 'success' && data['data'] != null) {
+          // Pastikan id_video dikonversi ke integer
           var videoData = data['data'];
           videoData['id_video'] = int.parse(videoData['id_video'].toString());
-          
+
           setState(() {
             _currentVideo = VideoEdukasi.fromJson(videoData);
             _initializeYoutubePlayer();
@@ -917,6 +920,74 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
     );
   }
 
+  Widget _buildJadwalItem(Map<String, dynamic> jadwal) {
+    String statusText;
+    Color statusColor;
+    
+    // Cek status dan tentukan text dan warna
+    switch(jadwal['status'].toString().toLowerCase()) {
+      case 'sudah':
+        statusText = 'Kamu sudah minum obat ini';
+        statusColor = Colors.green;
+        break;
+      case 'terlewat':
+        statusText = 'Terlambat';
+        statusColor = Colors.red;
+        break;
+      default:
+        statusText = 'Kamu belum minum obat, tekan untuk minum obat';
+        statusColor = Colors.orange;
+    }
+
+    return Container(
+      margin: EdgeInsets.only(bottom: 8),
+      padding: EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        border: Border.all(color: Colors.grey.shade300),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        children: [
+          SvgPicture.asset(
+            'assets/icons/capsules.svg',
+            width: 20,
+            height: 20,
+            color: PrimaryColor,
+          ),
+          SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(jadwal['nama_obat'],
+                    style: TextStyle(fontWeight: FontWeight.bold)),
+                Text(
+                  '${jadwal['dosis']} ${jadwal['satuan']}',
+                  style: TextStyle(color: Colors.grey, fontSize: 12),
+                ),
+                Text(
+                  statusText,
+                  style: TextStyle(
+                    color: statusColor,
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Text(
+            jadwal['waktu'],
+            style: TextStyle(
+              color: PrimaryColor,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     var size = MediaQuery.of(context).size;
@@ -1054,110 +1125,98 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
                                                 .map(
                                                     (jadwal) => GestureDetector(
                                                           onTap: () async {
-                                                            if (jadwal['status'].toString().toLowerCase() == 'sudah') {
-                                                              ScaffoldMessenger.of(context).showSnackBar(
+                                                            if (jadwal['status']
+                                                                    .toString()
+                                                                    .toLowerCase() ==
+                                                                'sudah') {
+                                                              ScaffoldMessenger
+                                                                      .of(context)
+                                                                  .showSnackBar(
                                                                 SnackBar(
-                                                                  content: Text('Anda sudah minum obat ini'),
-                                                                  backgroundColor: Colors.green,
+                                                                  content: Text(
+                                                                      'Anda sudah minum obat ini'),
+                                                                  backgroundColor:
+                                                                      Colors
+                                                                          .green,
                                                                 ),
                                                               );
                                                               return;
                                                             }
-                                                            
-                                                            await _saveSelectedJadwal(jadwal);
-                                                            Navigator.push(
-                                                              context,
-                                                              MaterialPageRoute(
-                                                                builder: (context) => MinumObat(),
-                                                              ),
-                                                            ).then((value) {
-                                                              if (value == true) {
-                                                                fetchJadwalTerdekat();
-                                                                checkUploadStatus();
+
+                                                            try {
+                                                              // Konversi data ke format yang sesuai
+                                                              final jadwalData =
+                                                                  {
+                                                                'id_riwayat': int
+                                                                    .parse(jadwal[
+                                                                            'id_riwayat']
+                                                                        .toString()), // Konversi ke int
+                                                                'id_jadwal': int
+                                                                    .parse(jadwal[
+                                                                            'id_jadwal']
+                                                                        .toString()), // Konversi ke int
+                                                                'nama_obat': jadwal[
+                                                                    'nama_obat'],
+                                                                'dosis': jadwal[
+                                                                    'dosis'],
+                                                                'satuan': jadwal[
+                                                                    'satuan'],
+                                                                'waktu': jadwal[
+                                                                    'waktu'],
+                                                                'tanggal': DateFormat(
+                                                                        'yyyy-MM-dd')
+                                                                    .format(DateTime
+                                                                        .now()),
+                                                              };
+
+                                                              // Simpan data jadwal ke SharedPreferences
+                                                              final prefs =
+                                                                  await SharedPreferences
+                                                                      .getInstance();
+                                                              await prefs.setString(
+                                                                  'selected_jadwal',
+                                                                  json.encode(
+                                                                      jadwalData));
+                                                              await prefs.setInt(
+                                                                  'selected_riwayat_id',
+                                                                  int.parse(jadwal[
+                                                                          'id_riwayat']
+                                                                      .toString()));
+
+                                                              // Navigate ke halaman MinumObat
+                                                              final result =
+                                                                  await Navigator
+                                                                      .push(
+                                                                context,
+                                                                MaterialPageRoute(
+                                                                  builder:
+                                                                      (context) =>
+                                                                          MinumObat(),
+                                                                ),
+                                                              );
+
+                                                              if (result ==
+                                                                  true) {
+                                                                await fetchJadwalTerdekat(); // Refresh jadwal setelah minum obat
+                                                                await checkUploadStatus();
                                                               }
-                                                            });
+                                                            } catch (e) {
+                                                              print(
+                                                                  'Error processing jadwal: $e');
+                                                              ScaffoldMessenger
+                                                                      .of(context)
+                                                                  .showSnackBar(
+                                                                SnackBar(
+                                                                  content: Text(
+                                                                      'Terjadi kesalahan: ${e.toString()}'),
+                                                                  backgroundColor:
+                                                                      Colors
+                                                                          .red,
+                                                                ),
+                                                              );
+                                                            }
                                                           },
-                                                          child: Container(
-                                                            margin: EdgeInsets.only(bottom: 8),
-                                                            padding: EdgeInsets.all(12),
-                                                            decoration: BoxDecoration(
-                                                              border: Border.all(
-                                                                color: jadwal['status'].toString().toLowerCase() == 'terlewat'
-                                                                    ? Colors.red.withOpacity(0.5)
-                                                                    : jadwal['status'].toString().toLowerCase() == 'sudah'
-                                                                        ? Colors.green.withOpacity(0.5)
-                                                                        : Colors.grey.shade300
-                                                              ),
-                                                              borderRadius: BorderRadius.circular(8),
-                                                            ),
-                                                            child: Row(
-                                                              children: [
-                                                                SvgPicture.asset(
-                                                                  jadwal['status'].toString().toLowerCase() == 'terlewat'
-                                                                      ? 'assets/icons/capsules-terlewat.svg'
-                                                                      : jadwal['status'].toString().toLowerCase() == 'sudah'
-                                                                          ? 'assets/icons/capsules-sudah.svg'
-                                                                          : 'assets/icons/capsules.svg',
-                                                                  width: 20,
-                                                                  height: 20,
-                                                                  color: jadwal['status'].toString().toLowerCase() == 'terlewat'
-                                                                      ? Colors.red
-                                                                      : jadwal['status'].toString().toLowerCase() == 'sudah'
-                                                                          ? Colors.green
-                                                                          : PrimaryColor,
-                                                                ),
-                                                                SizedBox(width: 8),
-                                                                Expanded(
-                                                                  child: Column(
-                                                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                                                    children: [
-                                                                      Text(
-                                                                        jadwal['nama_obat'],
-                                                                        style: TextStyle(
-                                                                          fontWeight: FontWeight.bold,
-                                                                          color: Colors.black87,
-                                                                        ),
-                                                                      ),
-                                                                      Text(
-                                                                        '${jadwal['dosis']} ${jadwal['satuan']}',
-                                                                        style: TextStyle(
-                                                                          color: Colors.grey,
-                                                                          fontSize: 12,
-                                                                        ),
-                                                                      ),
-                                                                      Text(
-                                                                        jadwal['status'].toString().toLowerCase() == 'sudah'
-                                                                            ? 'Anda sudah minum obat ini'
-                                                                            : jadwal['status'].toString().toLowerCase() == 'terlewat'
-                                                                                ? 'Anda melewatkan jadwal minum obat'
-                                                                                : 'Kamu belum minum obat, tekan untuk minum obat',
-                                                                        style: TextStyle(
-                                                                          color: jadwal['status'].toString().toLowerCase() == 'terlewat'
-                                                                              ? Colors.red
-                                                                              : jadwal['status'].toString().toLowerCase() == 'sudah'
-                                                                                  ? Colors.green
-                                                                                  : Colors.orange,
-                                                                          fontSize: 12,
-                                                                          fontWeight: FontWeight.bold,
-                                                                        ),
-                                                                      ),
-                                                                    ],
-                                                                  ),
-                                                                ),
-                                                                Text(
-                                                                  jadwal['waktu'],
-                                                                  style: TextStyle(
-                                                                    color: jadwal['status'].toString().toLowerCase() == 'terlewat'
-                                                                        ? Colors.red
-                                                                        : jadwal['status'].toString().toLowerCase() == 'sudah'
-                                                                            ? Colors.green
-                                                                            : PrimaryColor,
-                                                                    fontWeight: FontWeight.bold,
-                                                                  ),
-                                                                ),
-                                                              ],
-                                                            ),
-                                                          ),
+                                                          child: _buildJadwalItem(jadwal),
                                                         ))
                                                 .toList(),
                                           ],
