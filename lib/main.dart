@@ -66,48 +66,52 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 
 Future<void> _requestPermissions() async {
   print('=== MEMINTA IZIN APLIKASI ===');
-  
+
   if (Platform.isAndroid) {
     try {
       final deviceInfo = await DeviceInfoPlugin().androidInfo;
       print('Android SDK Version: ${deviceInfo.version.sdkInt}');
-      
+
       // Daftar izin yang akan diminta
       final permissions = <Permission>[];
-      
+
       // Izin notifikasi untuk Android 13+
       if (deviceInfo.version.sdkInt >= 33) {
         permissions.add(Permission.notification);
       }
-      
+
       // Izin battery optimization
       if (await Permission.ignoreBatteryOptimizations.status.isDenied) {
-        final batteryStatus = await Permission.ignoreBatteryOptimizations.request();
-        print('Izin battery optimization: ${batteryStatus.isGranted ? "Diberikan" : "Ditolak"}');
+        final batteryStatus =
+            await Permission.ignoreBatteryOptimizations.request();
+        print(
+            'Izin battery optimization: ${batteryStatus.isGranted ? "Diberikan" : "Ditolak"}');
       }
-      
+
       // Izin system alert window
       if (await Permission.systemAlertWindow.status.isDenied) {
         final alertStatus = await Permission.systemAlertWindow.request();
-        print('Izin system alert window: ${alertStatus.isGranted ? "Diberikan" : "Ditolak"}');
+        print(
+            'Izin system alert window: ${alertStatus.isGranted ? "Diberikan" : "Ditolak"}');
       }
-      
+
       // Izin exact alarm untuk Android 12+
       if (deviceInfo.version.sdkInt >= 31) {
         if (await Permission.scheduleExactAlarm.status.isDenied) {
           final granted = await Permission.scheduleExactAlarm.request();
-          print('Izin exact alarm: ${granted.isGranted ? "Diberikan" : "Ditolak"}');
+          print(
+              'Izin exact alarm: ${granted.isGranted ? "Diberikan" : "Ditolak"}');
         }
       }
-      
+
       // Request semua izin yang terkumpul
       if (permissions.isNotEmpty) {
         final statuses = await permissions.request();
         statuses.forEach((permission, status) {
-          print('Izin ${permission.toString()}: ${status.isGranted ? "Diberikan" : "Ditolak"}');
+          print(
+              'Izin ${permission.toString()}: ${status.isGranted ? "Diberikan" : "Ditolak"}');
         });
       }
-      
     } catch (e, stackTrace) {
       print('Error dalam meminta izin: $e');
       print('Stack trace: $stackTrace');
@@ -115,15 +119,15 @@ Future<void> _requestPermissions() async {
   } else {
     print('Bukan perangkat Android, melewati permintaan izin');
   }
-  
+
   print('=== SELESAI MEMINTA IZIN ===');
 }
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
+
   print('=== INISIALISASI APLIKASI ===');
-  
+
   if (Platform.isAndroid) {
     await FlutterLocalNotificationsPlugin()
         .resolvePlatformSpecificImplementation<
@@ -131,38 +135,42 @@ void main() async {
         ?.requestNotificationsPermission();
     print('Notification Permission Requested');
   }
-  
+
   await _requestPermissions();
   print('Additional Permissions Requested');
-  
+
   await Firebase.initializeApp();
   print('Firebase Initialized');
-  
+
   await AndroidAlarmManager.initialize();
-  print('Alarm Manager Initialized');
-  
+
   await NotificationService.initialize();
-  print('Notification Service Initialized');
-  
+
+  // Initialize AlarmService (buat channel notifikasi obat)
+  await AlarmService.initialize();
+
+  // syncAlarmsFromApi dipanggil setelah login berhasil, bukan di sini
+  // karena saat cold start user_data belum tentu tersedia
+
   await ArticleNotificationService.scheduleWeeklyArticleReminder();
   print('Article Notifications Scheduled');
-  
+
   const AndroidInitializationSettings initializationSettingsAndroid =
       AndroidInitializationSettings('@mipmap/ic_launcher');
-      
+
   const InitializationSettings initializationSettings =
       InitializationSettings(android: initializationSettingsAndroid);
-      
+
   final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
       FlutterLocalNotificationsPlugin();
-      
+
   await flutterLocalNotificationsPlugin.initialize(
     initializationSettings,
     onDidReceiveNotificationResponse: (NotificationResponse response) async {
       try {
         if (response.payload != null) {
           final payloadData = json.decode(response.payload!);
-          
+
           if (response.actionId == 'drink') {
             // Update status menjadi 'sudah'
             final updateResponse = await http.post(
@@ -174,7 +182,7 @@ void main() async {
                 'status': 'sudah',
               },
             );
-            
+
             if (updateResponse.statusCode == 200) {
               print('Status berhasil diupdate: sudah minum');
             } else {
@@ -183,9 +191,9 @@ void main() async {
           } else if (response.actionId == 'snooze') {
             // Jadwalkan ulang 5 menit kemudian
             final prefs = await SharedPreferences.getInstance();
-            final String? medicineData = 
+            final String? medicineData =
                 prefs.getString('medicine_${payloadData['id_jadwal']}');
-                
+
             if (medicineData != null) {
               final data = json.decode(medicineData);
               await AlarmService.scheduleAlarm(
@@ -219,9 +227,9 @@ void main() async {
           enableVibration: true,
         ));
   }
-  
+
   FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
-  
+
   await FirebaseMessaging.instance.requestPermission(
     alert: true,
     badge: true,
@@ -247,7 +255,7 @@ void main() async {
       ),
     );
   });
-  
+
   print('=== INISIALISASI SELESAI ===');
 }
 
@@ -269,14 +277,14 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   Future<void> setupFCM() async {
     try {
       String? token = await FirebaseMessaging.instance.getToken();
-      
+
       if (token != null) {
         final prefs = await SharedPreferences.getInstance();
         final userDataString = prefs.getString('user_data');
-        
+
         if (userDataString != null) {
           final userData = json.decode(userDataString);
-          
+
           final response = await http.post(
             Uri.parse('${base_url}api/Notification/update_token'),
             body: {
@@ -284,7 +292,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
               'id_user': userData['id_user'].toString(),
             },
           );
-          
+
           if (response.statusCode == 200) {
             print('Token updated successfully: $token');
           } else {
@@ -297,7 +305,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
         try {
           final prefs = await SharedPreferences.getInstance();
           final userDataString = prefs.getString('user_data');
-          
+
           if (userDataString != null) {
             final userData = json.decode(userDataString);
             final response = await http.post(
@@ -307,7 +315,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
                 'id_user': userData['id_user'].toString(),
               },
             );
-            
+
             if (response.statusCode == 200) {
               print('Token refreshed and updated successfully: $newToken');
             } else {
@@ -402,7 +410,8 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
                 ),
                 if (animation.status == AnimationStatus.reverse)
                   FadeTransition(
-                    opacity: Tween<double>(begin: 1.0, end: 0.0).animate(animation),
+                    opacity:
+                        Tween<double>(begin: 1.0, end: 0.0).animate(animation),
                     child: Container(
                       color: Colors.white,
                       child: Center(

@@ -5,12 +5,13 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:monitoringobat/model/user.dart';
+import 'package:monitoringobat/util/alarm_service.dart';
 
 class EditJadwal extends StatefulWidget {
   final Map<String, dynamic> jadwal;
-  
+
   EditJadwal({required this.jadwal});
-  
+
   @override
   _EditJadwalState createState() => _EditJadwalState();
 }
@@ -20,9 +21,17 @@ class _EditJadwalState extends State<EditJadwal> {
   int? selectedObatId;
   TimeOfDay selectedTime = TimeOfDay.now();
   bool _isLoading = false;
-  List<String> days = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'];
+  List<String> days = [
+    'Senin',
+    'Selasa',
+    'Rabu',
+    'Kamis',
+    'Jumat',
+    'Sabtu',
+    'Minggu'
+  ];
   List<Map<String, dynamic>> obatList = [];
-  
+
   final _formKey = GlobalKey<FormState>();
 
   @override
@@ -31,9 +40,8 @@ class _EditJadwalState extends State<EditJadwal> {
     selectedDay = widget.jadwal['hari'];
     selectedObatId = widget.jadwal['id_obat'];
     selectedTime = TimeOfDay(
-      hour: int.parse(widget.jadwal['waktu'].split(':')[0]),
-      minute: int.parse(widget.jadwal['waktu'].split(':')[1])
-    );
+        hour: int.parse(widget.jadwal['waktu'].split(':')[0]),
+        minute: int.parse(widget.jadwal['waktu'].split(':')[1]));
     _loadObatList();
   }
 
@@ -41,15 +49,16 @@ class _EditJadwalState extends State<EditJadwal> {
     try {
       final prefs = await SharedPreferences.getInstance();
       var userDataString = prefs.getString('user_data');
-      
+
       if (userDataString == null) {
         throw Exception('Data user tidak ditemukan');
       }
 
       final userData = UserData.fromJson(json.decode(userDataString));
-      
+
       var response = await http.get(
-        Uri.parse('${base_url}api/JadwalObat/list_obat?id_user=${userData.idUser}'),
+        Uri.parse(
+            '${base_url}api/JadwalObat/list_obat?id_user=${userData.idUser}'),
         headers: {'Accept': 'application/json'},
       );
 
@@ -57,7 +66,8 @@ class _EditJadwalState extends State<EditJadwal> {
         var jsonResponse = json.decode(response.body);
         if (jsonResponse['message']['status'] == 200) {
           setState(() {
-            obatList = List<Map<String, dynamic>>.from(jsonResponse['response']);
+            obatList =
+                List<Map<String, dynamic>>.from(jsonResponse['response']);
           });
         }
       }
@@ -88,14 +98,19 @@ class _EditJadwalState extends State<EditJadwal> {
           'id_jadwal': widget.jadwal['id_jadwal'].toString(),
           'id_obat': selectedObatId.toString(),
           'hari': selectedDay,
-          'waktu': '${selectedTime.hour.toString().padLeft(2, '0')}:${selectedTime.minute.toString().padLeft(2, '0')}',
+          'waktu':
+              '${selectedTime.hour.toString().padLeft(2, '0')}:${selectedTime.minute.toString().padLeft(2, '0')}',
         },
       );
 
       if (response.statusCode == 200) {
+        // Sync ulang semua alarm setelah jadwal diedit
+        await AlarmService.syncAlarmsFromApi();
+
+        if (!mounted) return;
         Navigator.pop(context, true);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Jadwal berhasil diperbarui')),
+          const SnackBar(content: Text('Jadwal berhasil diperbarui')),
         );
       }
     } catch (e) {
@@ -188,7 +203,8 @@ class _EditJadwalState extends State<EditJadwal> {
                   items: obatList.map((obat) {
                     return DropdownMenuItem<int>(
                       value: obat['id_obat'] as int,
-                      child: Text('${obat['nama_obat']} - ${obat['dosis']} ${obat['satuan']}'),
+                      child: Text(
+                          '${obat['nama_obat']} - ${obat['dosis']} ${obat['satuan']}'),
                     );
                   }).toList(),
                   onChanged: (int? newValue) {
@@ -251,4 +267,4 @@ class _EditJadwalState extends State<EditJadwal> {
       ),
     );
   }
-} 
+}

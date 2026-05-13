@@ -6,9 +6,21 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:monitoringobat/model/user.dart';
 import 'package:lottie/lottie.dart';
-import 'package:android_alarm_manager_plus/android_alarm_manager_plus.dart';
-import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:monitoringobat/util/alarm_service.dart';
+
+// Helper: konversi nama hari ke DateTime weekday number
+int _dayNumber(String dayName) {
+  const map = {
+    'Senin': DateTime.monday,
+    'Selasa': DateTime.tuesday,
+    'Rabu': DateTime.wednesday,
+    'Kamis': DateTime.thursday,
+    'Jumat': DateTime.friday,
+    'Sabtu': DateTime.saturday,
+    'Minggu': DateTime.sunday,
+  };
+  return map[dayName] ?? DateTime.monday;
+}
 
 class TambahJadwal extends StatefulWidget {
   @override
@@ -67,9 +79,6 @@ class _TambahJadwalState extends State<TambahJadwal> {
         },
       );
 
-      print('Response status: ${response.statusCode}');
-      print('Response body: ${response.body}');
-
       if (response.statusCode == 200) {
         var jsonResponse = json.decode(response.body);
         if (jsonResponse['message']['status'] == 200) {
@@ -115,7 +124,6 @@ class _TambahJadwalState extends State<TambahJadwal> {
       });
 
       try {
-        print('=== MULAI PROSES TAMBAH JADWAL ===');
         final prefs = await SharedPreferences.getInstance();
         var userDataString = prefs.getString('user_data');
         var accessToken = prefs.getString('access_token');
@@ -125,7 +133,7 @@ class _TambahJadwalState extends State<TambahJadwal> {
         }
 
         final userData = UserData.fromJson(json.decode(userDataString));
-        
+
         var uri = Uri.parse('${base_url}api/JadwalObat/tambah');
         var response = await http.post(
           uri,
@@ -138,44 +146,30 @@ class _TambahJadwalState extends State<TambahJadwal> {
             'id_user': userData.idUser.toString(),
             'id_obat': selectedObatId.toString(),
             'hari': selectedDay,
-            'waktu': '${selectedTime.hour.toString().padLeft(2, '0')}:${selectedTime.minute.toString().padLeft(2, '0')}:00',
+            'waktu':
+                '${selectedTime.hour.toString().padLeft(2, '0')}:${selectedTime.minute.toString().padLeft(2, '0')}:00',
           },
         );
 
         var jsonResponse = json.decode(response.body);
         if (jsonResponse['message']['status'] == 200) {
+          // Gunakan id_jadwal dari response API sebagai alarm ID agar unik
+          // per jadwal (bukan per obat), sehingga obat yang sama bisa punya
+          // beberapa jadwal di hari berbeda tanpa saling menimpa.
+          final int idJadwal = int.tryParse(
+                  jsonResponse['response']?['id_jadwal']?.toString() ?? '') ??
+              selectedObatId!;
+
           final now = DateTime.now();
-          final dayMap = {
-            'Senin': DateTime.monday,
-            'Selasa': DateTime.tuesday,
-            'Rabu': DateTime.wednesday,
-            'Kamis': DateTime.thursday,
-            'Jumat': DateTime.friday,
-            'Sabtu': DateTime.saturday,
-            'Minggu': DateTime.sunday,
-          };
-          
-          final selectedDayNumber = dayMap[selectedDay]!;
-          final currentDayNumber = now.weekday;
-          
-          // Hitung hari sampai jadwal berikutnya
-          int daysUntilSchedule = selectedDayNumber - currentDayNumber;
-          if (daysUntilSchedule <= 0) {
-            // Jika hari ini adalah hari yang dipilih dan waktu belum lewat
-            if (daysUntilSchedule == 0 &&
-                (selectedTime.hour > now.hour || 
-                (selectedTime.hour == now.hour && selectedTime.minute > now.minute))) {
-              // Tetap jadwalkan hari ini
-            } else {
-              // Jadwalkan minggu depan
-              daysUntilSchedule += 7;
-            }
+          int daysUntilSchedule = _dayNumber(selectedDay!) - now.weekday;
+          if (daysUntilSchedule < 0) {
+            daysUntilSchedule += 7;
+          } else if (daysUntilSchedule == 0) {
+            final todayTarget = DateTime(now.year, now.month, now.day,
+                selectedTime.hour, selectedTime.minute);
+            if (!todayTarget.isAfter(now)) daysUntilSchedule = 7;
           }
-          
-          print('Hari yang dipilih: $selectedDay (${selectedDayNumber})');
-          print('Hari ini: ${now.weekday}');
-          print('Jumlah hari hingga jadwal: $daysUntilSchedule');
-          
+
           final scheduleTime = DateTime(
             now.year,
             now.month,
@@ -184,14 +178,11 @@ class _TambahJadwalState extends State<TambahJadwal> {
             selectedTime.minute,
           );
 
-          print('Waktu yang dijadwalkan: ${scheduleTime.toString()}');
+          final selectedObatData =
+              obatList.firstWhere((obat) => obat['id_obat'] == selectedObatId);
 
-          final selectedObatData = obatList.firstWhere(
-            (obat) => obat['id_obat'] == selectedObatId
-          );
-          
           await AlarmService.scheduleAlarm(
-            id: selectedObatId!,
+            id: idJadwal,
             scheduleTime: scheduleTime,
             obatName: selectedObatData['nama_obat'],
             dosis: selectedObatData['dosis'],
@@ -199,8 +190,7 @@ class _TambahJadwalState extends State<TambahJadwal> {
             selectedDay: selectedDay!,
           );
 
-          print('Alarm berhasil dijadwalkan');
-
+          if (!mounted) return;
           showDialog(
             context: context,
             builder: (BuildContext context) {
@@ -265,9 +255,10 @@ class _TambahJadwalState extends State<TambahJadwal> {
           throw Exception(jsonResponse['message']['detail']);
         }
       } catch (e) {
-        print('Error dalam proses tambah jadwal: $e');
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Terjadi kesalahan saat menyimpan jadwal')),
+          const SnackBar(
+              content: Text('Terjadi kesalahan saat menyimpan jadwal')),
         );
       } finally {
         setState(() {

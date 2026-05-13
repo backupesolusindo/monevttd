@@ -14,6 +14,7 @@ import 'dart:convert';
 
 import '../../util/colors.dart';
 import '../../util/core.dart';
+import 'package:monitoringobat/util/alarm_service.dart';
 
 class LoginForm extends StatefulWidget {
   const LoginForm({
@@ -95,6 +96,11 @@ class _LoginFormState extends State<LoginForm> {
       if (responseData['response'] != null) {
         userData = UserData.fromJson(responseData['response']);
         prefs.setString('user_data', json.encode(userData.toJson()));
+
+        // Sync semua alarm jadwal minum obat dari API setelah login berhasil
+        await AlarmService.syncAlarmsFromApi();
+
+        if (!mounted) return;
         Navigator.pushReplacement(
             context,
             MaterialPageRoute(
@@ -145,6 +151,10 @@ class _LoginFormState extends State<LoginForm> {
     final savedAccessToken = prefs.getString('access_token');
 
     if (savedAccessToken != null) {
+      // Sync alarm untuk user yang sudah login sebelumnya
+      await AlarmService.syncAlarmsFromApi();
+
+      if (!mounted) return;
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (context) => Dashboard()),
@@ -165,7 +175,7 @@ class _LoginFormState extends State<LoginForm> {
           // Card(
           //   elevation: 2,
           //   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-          //   child: 
+          //   child:
           TextFormField(
             controller: _usernameController,
             keyboardType: TextInputType.emailAddress,
@@ -198,7 +208,7 @@ class _LoginFormState extends State<LoginForm> {
           // Card(
           //   elevation: 2,
           //   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-          //   child: 
+          //   child:
           TextFormField(
             controller: _passwordController,
             textInputAction: TextInputAction.done,
