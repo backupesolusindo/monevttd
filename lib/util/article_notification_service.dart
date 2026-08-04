@@ -73,10 +73,10 @@ class ArticleNotificationService {
         NotificationDetails(android: androidDetails);
 
     await _notifications.show(
-      999,
-      title,
-      body,
-      platformDetails,
+      id :999,
+      title: title,
+      body: body,
+      notificationDetails: platformDetails,
     );
   }
 

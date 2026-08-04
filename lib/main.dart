@@ -165,7 +165,7 @@ void main() async {
       FlutterLocalNotificationsPlugin();
 
   await flutterLocalNotificationsPlugin.initialize(
-    initializationSettings,
+    settings: initializationSettings,
     onDidReceiveNotificationResponse: (NotificationResponse response) async {
       try {
         if (response.payload != null) {

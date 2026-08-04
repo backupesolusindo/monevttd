@@ -129,7 +129,7 @@ class _RiwayatState extends State<Riwayat> {
         .format(startDate.add(Duration(days: value.toInt())));
     // text = "kj";
     return SideTitleWidget(
-      axisSide: meta.axisSide,
+      meta: meta,
       child: Text(text, style: style),
     );
   }

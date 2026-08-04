@@ -18,9 +18,9 @@ Future<void> alarmManagerCallback(int id) async {
 
   const AndroidInitializationSettings androidInit =
       AndroidInitializationSettings('@mipmap/ic_launcher');
-  await notifications.initialize(
-    const InitializationSettings(android: androidInit),
-  );
+ await notifications.initialize(
+  settings: const InitializationSettings(android: androidInit),
+);
 
   // Buat channel agar notifikasi bisa tampil
   await notifications
@@ -63,12 +63,12 @@ Future<void> alarmManagerCallback(int id) async {
     );
 
     await notifications.show(
-      id,
-      'Waktunya Minum Obat! 💊',
-      'Yuk minum $namaObat ($dosis $satuan) sekarang!',
-      const NotificationDetails(android: androidDetails),
-      payload: json.encode({'id_jadwal': id}),
-    );
+  id: id,
+  title: 'Waktunya Minum Obat! 💊',
+  body: 'Yuk minum $namaObat ($dosis $satuan) sekarang!',
+  notificationDetails: const NotificationDetails(android: androidDetails),
+  payload: json.encode({'id_jadwal': id}),
+);
   } catch (_) {
     // Tidak bisa log dari isolate terpisah
   }
@@ -129,7 +129,7 @@ class AlarmService {
         AndroidInitializationSettings('@mipmap/ic_launcher');
 
     await _notifications.initialize(
-      const InitializationSettings(android: androidInit),
+      settings:  InitializationSettings(android: androidInit),
       onDidReceiveNotificationResponse: _handleNotificationResponse,
     );
 
@@ -224,12 +224,12 @@ class AlarmService {
       );
 
       await _notifications.show(
-        id + 10000, // ID berbeda agar tidak bentrok dengan alarm notifikasi
-        'Pengingat Obat Dijadwalkan ✅',
-        'Akan diingatkan minum $obatName ($dosis $satuan) setiap $selectedDay '
+        id : id + 10000, // ID berbeda agar tidak bentrok dengan alarm notifikasi
+        title: 'Pengingat Obat Dijadwalkan ✅',
+        body: 'Akan diingatkan minum $obatName ($dosis $satuan) setiap $selectedDay '
             'pukul ${scheduleTime.hour.toString().padLeft(2, '0')}:'
             '${scheduleTime.minute.toString().padLeft(2, '0')}',
-        const NotificationDetails(android: confirmDetails),
+        notificationDetails:  NotificationDetails(android: confirmDetails),
       );
     }
 

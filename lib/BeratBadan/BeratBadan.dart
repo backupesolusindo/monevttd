@@ -408,9 +408,9 @@ class _BeratBadanState extends State<BeratBadan> {
     );
 
     return SideTitleWidget(
-      axisSide: meta.axisSide,
-      child: text,
-    );
+  meta: meta,
+  child: text,
+);
   }
 
   LineChartData mainData() {

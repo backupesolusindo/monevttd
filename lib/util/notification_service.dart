@@ -18,7 +18,7 @@ class NotificationService {
     );
 
     await _notifications.initialize(
-      initializationSettings,
+      settings: initializationSettings,
     );
 
     await _firebaseMessaging.requestPermission(
@@ -60,10 +60,10 @@ class NotificationService {
         NotificationDetails(android: androidPlatformChannelSpecifics);
 
     await _notifications.show(
-      DateTime.now().millisecond,
-      title,
-      body,
-      platformChannelSpecifics,
+      id : DateTime.now().millisecond,
+      title : title,
+      body: body,
+      notificationDetails: platformChannelSpecifics,
       payload: payload,
     );
   }
