@@ -53,25 +53,27 @@ class _RiwayatState extends State<Riwayat> {
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         if (data['message']['status'] == 200) {
-          final Map<String, dynamic> responseData = data['response'];
+          final dynamic rawResponse = data['response'];
           List<Map<String, dynamic>> flattenedData = [];
 
-          responseData.forEach((tanggal, jadwalList) {
-            for (var jadwal in jadwalList) {
-              flattenedData.add({
-                ...jadwal,
-                'tanggal': tanggal,
-              });
-            }
-          });
+          if (rawResponse is Map<String, dynamic>) {
+            rawResponse.forEach((tanggal, jadwalList) {
+              for (var jadwal in jadwalList) {
+                flattenedData.add({
+                  ...jadwal,
+                  'tanggal': tanggal,
+                });
+              }
+            });
 
-          flattenedData.sort((a, b) {
-            int dateCompare = DateTime.parse(b['tanggal']).compareTo(DateTime.parse(a['tanggal']));
-            if (dateCompare == 0) {
-              return a['waktu'].compareTo(b['waktu']);
-            }
-            return dateCompare;
-          });
+            flattenedData.sort((a, b) {
+              int dateCompare = DateTime.parse(b['tanggal']).compareTo(DateTime.parse(a['tanggal']));
+              if (dateCompare == 0) {
+                return a['waktu'].compareTo(b['waktu']);
+              }
+              return dateCompare;
+            });
+          }
 
           setState(() {
             riwayatData = flattenedData;
@@ -530,7 +532,7 @@ class _RiwayatState extends State<Riwayat> {
           Icon(
             Icons.medication_outlined,
             size: 80,
-            color: Colors.white,
+            color: PrimaryColor.withOpacity(0.5),
           ),
           SizedBox(height: 16),
           Container(
@@ -540,7 +542,7 @@ class _RiwayatState extends State<Riwayat> {
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 16,
-                color: Colors.white,
+                color: Colors.grey[700],
                 fontWeight: FontWeight.w500,
               ),
             ),

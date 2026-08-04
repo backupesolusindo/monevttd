@@ -12,6 +12,7 @@ import 'package:monitoringobat/FAQ/listfaq.dart';
 import 'package:monitoringobat/Kuisioner/Kuisioner_screen.dart';
 import 'package:monitoringobat/PedomanGizi/PdfPedomanGizi.dart';
 import 'package:monitoringobat/dashboard/baca_artikel.dart';
+import 'package:monitoringobat/dashboard/video_player_screen.dart';
 import 'package:monitoringobat/util/colors.dart';
 import 'package:marquee/marquee.dart';
 import 'package:page_transition/page_transition.dart';
@@ -25,9 +26,9 @@ import 'package:monitoringobat/profile/profile.dart';
 
 import 'package:monitoringobat/tambahDarah/tambahDarah.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:youtube_player_flutter/youtube_player_flutter.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:monitoringobat/dashboard/minum_obat.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../util/core.dart';
 import 'package:image_picker/image_picker.dart';
@@ -59,7 +60,6 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
   String Email = '';
   var tinggiBadanCm = 0.0;
   var beratBadanKg = 0.0;
-
   String TB = '';
   String BB = '';
   String Id = '';
@@ -67,7 +67,6 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
 
   bool isLoaded = false;
 
-  YoutubePlayerController? _playercontroller;
   VideoEdukasi? _currentVideo;
   bool _isVideoLoaded = false;
 
@@ -91,8 +90,32 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
 
   List<dynamic> jadwalTerdekat = [];
   bool isLoadingJadwal = true;
-
   Map<String, List<dynamic>> jadwalPerTanggal = {};
+
+  String? _extractYoutubeId(String raw) {
+    if (raw.isEmpty) return null;
+
+    final idPattern = RegExp(r'^[a-zA-Z0-9_-]{11}$');
+    if (idPattern.hasMatch(raw)) return raw;
+
+    final patterns = [
+      RegExp(
+          r'(?:youtube\.com\/watch\?v=|youtube\.com\/embed\/|youtu\.be\/|youtube\.com\/shorts\/)([a-zA-Z0-9_-]{11})'),
+    ];
+    for (final p in patterns) {
+      final match = p.firstMatch(raw);
+      if (match != null) return match.group(1);
+    }
+    return null;
+  }
+
+  String _greetingByTime() {
+    final hour = DateTime.now().hour;
+    if (hour >= 4 && hour < 11) return 'Selamat Pagi';
+    if (hour >= 11 && hour < 15) return 'Selamat Siang';
+    if (hour >= 15 && hour < 18) return 'Selamat Sore';
+    return 'Selamat Malam';
+  }
 
   Future<void> checkUploadStatus() async {
     final prefs = await SharedPreferences.getInstance();
@@ -170,7 +193,8 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
 
   void _previousMonth() {
     setState(() {
-      _selectedDate = DateTime(_selectedDate.year, _selectedDate.month - 1, 1);
+      _selectedDate =
+          DateTime(_selectedDate.year, _selectedDate.month - 1, 1);
       updateDays();
       fetchJadwalBulanan(_selectedDate.year, _selectedDate.month);
     });
@@ -178,7 +202,8 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
 
   void _nextMonth() {
     setState(() {
-      _selectedDate = DateTime(_selectedDate.year, _selectedDate.month + 1, 1);
+      _selectedDate =
+          DateTime(_selectedDate.year, _selectedDate.month + 1, 1);
       updateDays();
       fetchJadwalBulanan(_selectedDate.year, _selectedDate.month);
     });
@@ -192,7 +217,6 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
     setState(() {
       days = _daysInMonth(now.year, now.month);
     });
-    fetchVideo();
     loadUserData();
     fetchJadwalTerdekat();
     Timer.periodic(Duration(minutes: 5), (Timer t) => fetchJadwalTerdekat());
@@ -203,7 +227,6 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
   @override
   void dispose() {
     _animationController?.dispose();
-    _playercontroller?.dispose();
     super.dispose();
   }
 
@@ -314,23 +337,6 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
     } catch (e) {
       print('Error fetching darah data: $e');
     }
-  }
-
-  Future<void> fetchVideo() async {
-    _playercontroller = YoutubePlayerController(
-      initialVideoId: 'C0vU-w-vqU0',
-      flags: YoutubePlayerFlags(
-        autoPlay: false,
-        mute: false,
-        hideControls: false,
-        loop: true,
-      ),
-    );
-    _playercontroller!.addListener(() {
-      if (_playercontroller!.value.hasError) {
-        print('Error: ${_playercontroller!.value.errorCode}');
-      }
-    });
   }
 
   Future<void> fetchData3() async {
@@ -450,7 +456,8 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
 
     final ImagePicker _picker = ImagePicker();
     try {
-      final XFile? photo = await _picker.pickImage(source: ImageSource.camera);
+      final XFile? photo =
+          await _picker.pickImage(source: ImageSource.camera);
       if (photo != null) {
         final result = await Navigator.push(
           context,
@@ -523,7 +530,8 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
           },
         );
 
-        print('Response from jadwal_terdekat: ${response.body}'); // Debug print
+        print(
+            'Response from jadwal_terdekat: ${response.body}'); // Debug print
 
         if (response.statusCode == 200) {
           final data = json.decode(response.body);
@@ -621,25 +629,6 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
                       // Debug print untuk verifikasi
                       print(
                           'ID Riwayat yang tersimpan: ${prefs.getInt('selected_riwayat_id')}');
-
-                      // Ambil foto
-                      // final ImagePicker _picker = ImagePicker();
-                      // final XFile? photo = await _picker.pickImage(
-                      //   source: ImageSource.camera,
-                      //   preferredCameraDevice: CameraDevice.rear,
-                      // );
-
-                      // if (photo != null) {
-                      //   Navigator.pop(context); // Tutup bottom sheet
-                      //   await Navigator.push(
-                      //     context,
-                      //     MaterialPageRoute(
-                      //       builder: (context) => UploadBuktiObat(
-                      //         imageFile: File(photo.path),
-                      //       ),
-                      //     ),
-                      //   );
-                      // }
                     } catch (e) {
                       print('Error dalam proses: $e');
                       ScaffoldMessenger.of(context).showSnackBar(
@@ -692,6 +681,12 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
     );
   }
 
+  // ==========================================================
+  // VIDEO EDUKASI: fetch metadata saja.
+  // Pemutaran video dipindah ke VideoPlayerScreen (full-screen),
+  // sehingga di sini tidak perlu inisialisasi WebView / cek error
+  // sebelum menampilkan thumbnail.
+  // ==========================================================
   Future<void> _getVideoEdukasi() async {
     try {
       setState(() {
@@ -717,7 +712,7 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
 
           setState(() {
             _currentVideo = VideoEdukasi.fromJson(videoData);
-            _initializeYoutubePlayer();
+            _isVideoLoaded = true;
           });
         } else {
           setState(() {
@@ -741,180 +736,491 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
     }
   }
 
-  void _initializeYoutubePlayer() {
-    if (_currentVideo != null) {
-      _playercontroller = YoutubePlayerController(
-        initialVideoId: _currentVideo!.youtubeId,
-        flags: YoutubePlayerFlags(
-          autoPlay: false,
-          mute: false,
-          controlsVisibleAtStart: true,
-        ),
-      );
-      setState(() {
-        _isVideoLoaded = true;
-      });
-    } else {
-      setState(() {
-        _isVideoLoaded = true;
-      });
-    }
-  }
-
+  // ==========================================================
+  // WIDGET: VIDEO EDUKASI
+  // Selalu menampilkan thumbnail + tombol play. Tidak pernah
+  // menampilkan pesan error di kartu ini — jika video gagal
+  // dimuat, itu ditangani di dalam VideoPlayerScreen setelah
+  // user menekan tombol play.
+  // ==========================================================
   Widget _buildVideoSection() {
     if (!_isVideoLoaded) {
-      return Container(
-        margin: EdgeInsets.symmetric(horizontal: 16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(15),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.grey.withOpacity(0.3),
-              spreadRadius: 2,
-              blurRadius: 5,
-              offset: Offset(0, 3),
-            ),
-          ],
+      return _videoCardWrapper(
+        child: Padding(
+          padding: EdgeInsets.all(32),
+          child:
+              Center(child: CircularProgressIndicator(color: PrimaryColor)),
         ),
-        child: Center(
-          child: Padding(
-            padding: EdgeInsets.all(20),
-            child: CircularProgressIndicator(),
+      );
+    }
+
+    final String? videoId = _currentVideo != null
+        ? _extractYoutubeId(_currentVideo!.youtubeId)
+        : null;
+
+    // Belum ada video sama sekali, atau id video tidak valid
+    if (_currentVideo == null || videoId == null) {
+      return _videoCardWrapper(
+        child: Padding(
+          padding: EdgeInsets.symmetric(vertical: 32, horizontal: 20),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.video_library_outlined,
+                  size: 64, color: Colors.grey[400]),
+              SizedBox(height: 12),
+              Text(
+                'Belum ada video edukasi',
+                style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.grey[700]),
+              ),
+              SizedBox(height: 6),
+              Text(
+                'Video edukasi akan ditampilkan di sini ketika tersedia',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 13, color: Colors.grey[500]),
+              ),
+            ],
           ),
         ),
       );
     }
 
-    if (_currentVideo == null || _playercontroller == null) {
-      return Container(
-        margin: EdgeInsets.symmetric(horizontal: 16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(15),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.grey.withOpacity(0.3),
-              spreadRadius: 2,
-              blurRadius: 5,
-              offset: Offset(0, 3),
-            ),
-          ],
-        ),
-        child: Center(
-          child: Padding(
-            padding: EdgeInsets.all(20),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  Icons.video_library_outlined,
-                  size: 80,
-                  color: Colors.grey[400],
-                ),
-                SizedBox(height: 16),
-                Text(
-                  'Belum ada video edukasi',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.grey[700],
+    final thumbnailUrl = 'https://img.youtube.com/vi/$videoId/hqdefault.jpg';
+
+    return _videoCardWrapper(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          GestureDetector(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => VideoPlayerScreen(
+                    videoId: videoId,
+                    title: _currentVideo!.judul,
                   ),
                 ),
-                SizedBox(height: 8),
+              );
+            },
+            child: ClipRRect(
+              borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+              child: AspectRatio(
+                aspectRatio: 16 / 9,
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    Image.network(
+                      thumbnailUrl,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) => Container(
+                        color: Colors.grey.shade200,
+                        child: Icon(Icons.image_not_supported_outlined,
+                            color: Colors.grey.shade400, size: 40),
+                      ),
+                    ),
+                    Container(color: Colors.black.withOpacity(0.25)),
+                    Center(
+                      child: Container(
+                        width: 64,
+                        height: 64,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.92),
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.2),
+                              blurRadius: 8,
+                            ),
+                          ],
+                        ),
+                        child: Icon(Icons.play_arrow_rounded,
+                            color: PrimaryColor, size: 40),
+                      ),
+                    ),
+                    Positioned(
+                      bottom: 8,
+                      right: 8,
+                      child: Container(
+                        padding:
+                            EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withOpacity(0.7),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.play_circle_outline,
+                                color: Colors.white, size: 12),
+                            SizedBox(width: 4),
+                            Text('Putar',
+                                style: TextStyle(
+                                    color: Colors.white, fontSize: 11)),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          Padding(
+            padding: EdgeInsets.all(14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      padding: EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: PrimaryColor.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Icon(Icons.play_circle_fill,
+                          color: PrimaryColor, size: 20),
+                    ),
+                    SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        _currentVideo!.judul,
+                        style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                            height: 1.3),
+                      ),
+                    ),
+                  ],
+                ),
+                if (_currentVideo!.deskripsi.isNotEmpty) ...[
+                  SizedBox(height: 8),
+                  Text(
+                    _currentVideo!.deskripsi,
+                    style: TextStyle(
+                        fontSize: 13, color: Colors.grey[600], height: 1.4),
+                  ),
+                ],
+                SizedBox(height: 10),
+                Row(
+                  children: [
+                    Icon(Icons.play_arrow_rounded,
+                        size: 14, color: PrimaryColor),
+                    SizedBox(width: 4),
+                    Text(
+                      'Tap untuk memutar video',
+                      style: TextStyle(
+                        fontSize: 11.5,
+                        color: PrimaryColor,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _videoCardWrapper({required Widget child}) {
+    return Container(
+      margin: EdgeInsets.symmetric(horizontal: 16),
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.06),
+            spreadRadius: 1,
+            blurRadius: 10,
+            offset: Offset(0, 4),
+          ),
+        ],
+      ),
+      child: child,
+    );
+  }
+
+  // ==========================================================
+  // WIDGET: HEADER / SAMBUTAN
+  // ==========================================================
+  Widget _buildHeaderGreeting() {
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.fromLTRB(20, 24, 20, 28),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            PrimaryColor,
+            PrimaryColor.withOpacity(0.85),
+          ],
+        ),
+        borderRadius: BorderRadius.only(
+          bottomLeft: Radius.circular(28),
+          bottomRight: Radius.circular(28),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: PrimaryColor.withOpacity(0.25),
+            blurRadius: 16,
+            offset: Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          GestureDetector(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => Profile()),
+              );
+            },
+            child: Container(
+              width: 56,
+              height: 56,
+              padding: EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.18),
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.white.withOpacity(0.5)),
+              ),
+              child: SvgPicture.asset(
+                'assets/icons/user.svg',
+                color: Colors.white,
+              ),
+            ),
+          ),
+          SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
                 Text(
-                  'Video edukasi akan ditampilkan di sini ketika tersedia',
-                  textAlign: TextAlign.center,
+                  _greetingByTime(),
                   style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey[600],
+                    color: Colors.white.withOpacity(0.85),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                    letterSpacing: 0.3,
+                  ),
+                ),
+                SizedBox(height: 2),
+                Text(
+                  Nama.isNotEmpty ? Nama : '...',
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                SizedBox(height: 4),
+                Text(
+                  DateFormat('EEEE, dd MMMM yyyy', 'id_ID')
+                      .format(DateTime.now()),
+                  style: TextStyle(
+                    color: Colors.white.withOpacity(0.8),
+                    fontSize: 12.5,
                   ),
                 ),
               ],
             ),
           ),
-        ),
-      );
-    }
+          Container(
+            padding: EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.18),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(Icons.notifications_none_rounded,
+                color: Colors.white, size: 22),
+          ),
+        ],
+      ),
+    );
+  }
 
+  // ==========================================================
+  // WIDGET: CARD JADWAL MINUM OBAT
+  // ==========================================================
+  Widget _buildJadwalCard() {
     return Container(
-      margin: EdgeInsets.symmetric(horizontal: 16),
+      margin: EdgeInsets.symmetric(horizontal: 20),
+      padding: EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(15),
+        borderRadius: BorderRadius.circular(18),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.3),
-            spreadRadius: 2,
-            blurRadius: 5,
-            offset: Offset(0, 3),
+            color: Colors.black.withOpacity(0.06),
+            blurRadius: 14,
+            offset: Offset(0, 6),
           ),
         ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Padding(
-            padding: EdgeInsets.all(16),
-            child: Row(
-              children: [
-                Icon(
-                  Icons.play_circle_outline,
-                  color: Colors.blue,
-                  size: 24,
+          Row(
+            children: [
+              Container(
+                padding: EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: PrimaryColor.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(10),
                 ),
-                SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    _currentVideo!.judul,
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
+                child: SvgPicture.asset(
+                  'assets/icons/capsules.svg',
+                  width: 18,
+                  height: 18,
+                  color: PrimaryColor,
+                ),
+              ),
+              SizedBox(width: 10),
+              Text(
+                'Jadwal Minum Obat',
+                style: TextStyle(
+                  color: Colors.black87,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
+              ),
+              Spacer(),
+              Container(
+                padding: EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade100,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  DateFormat('EEEE', 'id_ID').format(DateTime.now()),
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey.shade700,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
-              ],
-            ),
-          ),
-          if (_currentVideo!.deskripsi.isNotEmpty)
-            Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: Text(
-                _currentVideo!.deskripsi,
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.grey[600],
-                ),
               ),
-            ),
-          ClipRRect(
-            borderRadius: BorderRadius.only(
-              bottomLeft: Radius.circular(15),
-              bottomRight: Radius.circular(15),
-            ),
-            child: YoutubePlayerBuilder(
-              player: YoutubePlayer(
-                controller: _playercontroller!,
-                showVideoProgressIndicator: true,
-                progressIndicatorColor: Colors.blueAccent,
-                progressColors: ProgressBarColors(
-                  playedColor: Colors.blue,
-                  handleColor: Colors.blueAccent,
-                ),
-                onReady: () {
-                  print('Player is ready.');
-                },
-                onEnded: (data) {
-                  _playercontroller?.seekTo(Duration.zero);
-                },
-              ),
-              builder: (context, player) {
-                return Column(
-                  children: [player],
-                );
-              },
-            ),
+            ],
           ),
+          SizedBox(height: 16),
+          isLoadingJadwal
+              ? Center(
+                  child: Container(
+                    width: 90,
+                    height: 90,
+                    child: Lottie.asset(
+                      'assets/lottie/main_loading.json',
+                      fit: BoxFit.contain,
+                    ),
+                  ),
+                )
+              : jadwalTerdekat.isEmpty
+                  ? Container(
+                      width: double.infinity,
+                      padding: EdgeInsets.symmetric(vertical: 24),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade50,
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: Column(
+                        children: [
+                          Icon(Icons.event_available_outlined,
+                              color: Colors.grey.shade400, size: 36),
+                          SizedBox(height: 8),
+                          Text(
+                            'Tidak ada jadwal minum obat untuk hari ini',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: Colors.grey.shade500,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  : Column(
+                      children: jadwalTerdekat
+                          .map<Widget>(
+                            (jadwal) => GestureDetector(
+                              onTap: () async {
+                                if (jadwal['status']
+                                        .toString()
+                                        .toLowerCase() ==
+                                    'sudah') {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content:
+                                          Text('Anda sudah minum obat ini'),
+                                      backgroundColor: Colors.green,
+                                    ),
+                                  );
+                                  return;
+                                }
+
+                                try {
+                                  final jadwalData = {
+                                    'id_riwayat': int.parse(
+                                        jadwal['id_riwayat'].toString()),
+                                    'id_jadwal': int.parse(
+                                        jadwal['id_jadwal'].toString()),
+                                    'nama_obat': jadwal['nama_obat'],
+                                    'dosis': jadwal['dosis'],
+                                    'satuan': jadwal['satuan'],
+                                    'waktu': jadwal['waktu'],
+                                    'tanggal': DateFormat('yyyy-MM-dd')
+                                        .format(DateTime.now()),
+                                  };
+
+                                  final prefs = await SharedPreferences
+                                      .getInstance();
+                                  await prefs.setString('selected_jadwal',
+                                      json.encode(jadwalData));
+                                  await prefs.setInt(
+                                      'selected_riwayat_id',
+                                      int.parse(
+                                          jadwal['id_riwayat'].toString()));
+
+                                  final result = await Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => MinumObat(),
+                                    ),
+                                  );
+
+                                  if (result == true) {
+                                    await fetchJadwalTerdekat();
+                                    await checkUploadStatus();
+                                  }
+                                } catch (e) {
+                                  print('Error processing jadwal: $e');
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                          'Terjadi kesalahan: ${e.toString()}'),
+                                      backgroundColor: Colors.red,
+                                    ),
+                                  );
+                                }
+                              },
+                              child: _buildJadwalItem(jadwal),
+                            ),
+                          )
+                          .toList(),
+                    ),
         ],
       ),
     );
@@ -923,64 +1229,105 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
   Widget _buildJadwalItem(Map<String, dynamic> jadwal) {
     String statusText;
     Color statusColor;
-    
-    // Cek status dan tentukan text dan warna
-    switch(jadwal['status'].toString().toLowerCase()) {
+    IconData statusIcon;
+
+    switch (jadwal['status'].toString().toLowerCase()) {
       case 'sudah':
-        statusText = 'Kamu sudah minum obat ini';
+        statusText = 'Sudah diminum';
         statusColor = Colors.green;
+        statusIcon = Icons.check_circle;
         break;
       case 'terlewat':
         statusText = 'Terlambat';
         statusColor = Colors.red;
+        statusIcon = Icons.error;
         break;
       default:
-        statusText = 'Kamu belum minum obat, tekan untuk minum obat';
+        statusText = 'Tekan untuk minum obat';
         statusColor = Colors.orange;
+        statusIcon = Icons.radio_button_unchecked;
     }
 
     return Container(
-      margin: EdgeInsets.only(bottom: 8),
+      margin: EdgeInsets.only(bottom: 10),
       padding: EdgeInsets.all(12),
       decoration: BoxDecoration(
-        border: Border.all(color: Colors.grey.shade300),
-        borderRadius: BorderRadius.circular(8),
+        color: statusColor.withOpacity(0.06),
+        border: Border.all(color: statusColor.withOpacity(0.25)),
+        borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
         children: [
-          SvgPicture.asset(
-            'assets/icons/capsules.svg',
-            width: 20,
-            height: 20,
-            color: PrimaryColor,
+          Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.04),
+                  blurRadius: 4,
+                ),
+              ],
+            ),
+            child: Center(
+              child: SvgPicture.asset(
+                'assets/icons/capsules.svg',
+                width: 18,
+                height: 18,
+                color: PrimaryColor,
+              ),
+            ),
           ),
-          SizedBox(width: 8),
+          SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(jadwal['nama_obat'],
-                    style: TextStyle(fontWeight: FontWeight.bold)),
+                Text(
+                  jadwal['nama_obat'],
+                  style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                      color: Colors.black87),
+                ),
+                SizedBox(height: 2),
                 Text(
                   '${jadwal['dosis']} ${jadwal['satuan']}',
-                  style: TextStyle(color: Colors.grey, fontSize: 12),
+                  style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
                 ),
-                Text(
-                  statusText,
-                  style: TextStyle(
-                    color: statusColor,
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                  ),
+                SizedBox(height: 4),
+                Row(
+                  children: [
+                    Icon(statusIcon, color: statusColor, size: 13),
+                    SizedBox(width: 4),
+                    Text(
+                      statusText,
+                      style: TextStyle(
+                        color: statusColor,
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
           ),
-          Text(
-            jadwal['waktu'],
-            style: TextStyle(
-              color: PrimaryColor,
-              fontWeight: FontWeight.bold,
+          Container(
+            padding: EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: PrimaryColor.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              jadwal['waktu'],
+              style: TextStyle(
+                color: PrimaryColor,
+                fontWeight: FontWeight.bold,
+                fontSize: 13,
+              ),
             ),
           ),
         ],
@@ -996,10 +1343,7 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
       bottomNavigationBar: BottomNavBar(selected: 0),
       body: Container(
         decoration: BoxDecoration(
-          image: DecorationImage(
-            image: AssetImage('assets/images/bgmonevminumobatbaru.png'),
-            fit: BoxFit.cover,
-          ),
+          color: Color(0xFFF5F6FA),
         ),
         child: isLoaded
             ? Container(
@@ -1016,249 +1360,12 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
                 ),
               )
             : ListView(
+                padding: EdgeInsets.zero,
                 children: [
+                  _buildHeaderGreeting(),
                   SizedBox(height: 20),
-                  Container(
-                    width: double.infinity,
-                    padding: EdgeInsets.symmetric(vertical: 16, horizontal: 24),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Row(
-                              children: [
-                                GestureDetector(
-                                  onTap: () {
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                          builder: (context) => Profile()),
-                                    );
-                                  },
-                                  child: Container(
-                                    width: 40,
-                                    height: 40,
-                                    margin: EdgeInsets.only(right: 12),
-                                    child: SvgPicture.asset(
-                                      'assets/icons/user.svg',
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                                ),
-                                Text(
-                                  'Hi, ' + Nama,
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 32,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                        SizedBox(height: 20),
-                        Container(
-                          padding: EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(1),
-                            borderRadius: BorderRadius.circular(10),
-                            border: Border.all(color: Colors.grey.shade300),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'JADWAL MINUM OBAT',
-                                style: TextStyle(
-                                  color: PrimaryColor,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 16,
-                                ),
-                              ),
-                              SizedBox(height: 10),
-                              isLoadingJadwal
-                                  ? Center(
-                                      child: Container(
-                                        width: 100,
-                                        height: 100,
-                                        child: Lottie.asset(
-                                          'assets/lottie/main_loading.json',
-                                          fit: BoxFit.contain,
-                                        ),
-                                      ),
-                                    )
-                                  : jadwalTerdekat.isEmpty
-                                      ? Center(
-                                          child: Text(
-                                            'Tidak ada jadwal minum obat untuk hari ini',
-                                            style: TextStyle(
-                                              color: Colors.grey,
-                                              fontSize: 14,
-                                            ),
-                                          ),
-                                        )
-                                      : Column(
-                                          children: [
-                                            Row(
-                                              children: [
-                                                SvgPicture.asset(
-                                                  'assets/icons/calendar-clock.svg',
-                                                  width: 20,
-                                                  height: 20,
-                                                  color: Colors.grey,
-                                                ),
-                                                SizedBox(width: 8),
-                                                Expanded(
-                                                  child: Text(
-                                                    '${DateFormat('EEEE', 'id_ID').format(DateTime.now())}',
-                                                    style: TextStyle(
-                                                        color: Colors.grey),
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                            SizedBox(height: 10),
-                                            ...jadwalTerdekat
-                                                .map(
-                                                    (jadwal) => GestureDetector(
-                                                          onTap: () async {
-                                                            if (jadwal['status']
-                                                                    .toString()
-                                                                    .toLowerCase() ==
-                                                                'sudah') {
-                                                              ScaffoldMessenger
-                                                                      .of(context)
-                                                                  .showSnackBar(
-                                                                SnackBar(
-                                                                  content: Text(
-                                                                      'Anda sudah minum obat ini'),
-                                                                  backgroundColor:
-                                                                      Colors
-                                                                          .green,
-                                                                ),
-                                                              );
-                                                              return;
-                                                            }
-
-                                                            try {
-                                                              // Konversi data ke format yang sesuai
-                                                              final jadwalData =
-                                                                  {
-                                                                'id_riwayat': int
-                                                                    .parse(jadwal[
-                                                                            'id_riwayat']
-                                                                        .toString()), // Konversi ke int
-                                                                'id_jadwal': int
-                                                                    .parse(jadwal[
-                                                                            'id_jadwal']
-                                                                        .toString()), // Konversi ke int
-                                                                'nama_obat': jadwal[
-                                                                    'nama_obat'],
-                                                                'dosis': jadwal[
-                                                                    'dosis'],
-                                                                'satuan': jadwal[
-                                                                    'satuan'],
-                                                                'waktu': jadwal[
-                                                                    'waktu'],
-                                                                'tanggal': DateFormat(
-                                                                        'yyyy-MM-dd')
-                                                                    .format(DateTime
-                                                                        .now()),
-                                                              };
-
-                                                              // Simpan data jadwal ke SharedPreferences
-                                                              final prefs =
-                                                                  await SharedPreferences
-                                                                      .getInstance();
-                                                              await prefs.setString(
-                                                                  'selected_jadwal',
-                                                                  json.encode(
-                                                                      jadwalData));
-                                                              await prefs.setInt(
-                                                                  'selected_riwayat_id',
-                                                                  int.parse(jadwal[
-                                                                          'id_riwayat']
-                                                                      .toString()));
-
-                                                              // Navigate ke halaman MinumObat
-                                                              final result =
-                                                                  await Navigator
-                                                                      .push(
-                                                                context,
-                                                                MaterialPageRoute(
-                                                                  builder:
-                                                                      (context) =>
-                                                                          MinumObat(),
-                                                                ),
-                                                              );
-
-                                                              if (result ==
-                                                                  true) {
-                                                                await fetchJadwalTerdekat(); // Refresh jadwal setelah minum obat
-                                                                await checkUploadStatus();
-                                                              }
-                                                            } catch (e) {
-                                                              print(
-                                                                  'Error processing jadwal: $e');
-                                                              ScaffoldMessenger
-                                                                      .of(context)
-                                                                  .showSnackBar(
-                                                                SnackBar(
-                                                                  content: Text(
-                                                                      'Terjadi kesalahan: ${e.toString()}'),
-                                                                  backgroundColor:
-                                                                      Colors
-                                                                          .red,
-                                                                ),
-                                                              );
-                                                            }
-                                                          },
-                                                          child: _buildJadwalItem(jadwal),
-                                                        ))
-                                                .toList(),
-                                          ],
-                                        ),
-                              SizedBox(height: 10),
-                              // GestureDetector(
-                              //   onTap: _takePicture,
-                              //   child: Row(
-                              //     mainAxisAlignment: MainAxisAlignment.end,
-                              //     children: [
-                              //       Column(
-                              //         children: [
-                              //           SvgPicture.asset(
-                              //             'assets/icons/mode-portrait.svg',
-                              //             width: 24,
-                              //             height: 24,
-                              //             color: PrimaryColor,
-                              //           ),
-                              //           SizedBox(height: 4),
-                              //           Text(
-                              //             'Buat Foto\nMinum Obat',
-                              //             style: TextStyle(
-                              //               color: PrimaryColor,
-                              //               fontSize: 12,
-                              //               fontWeight: FontWeight.bold,
-                              //             ),
-                              //             textAlign: TextAlign.center,
-                              //           ),
-                              //         ],
-                              //       ),
-                              //     ],
-                              //   ),
-                              // ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  SizedBox(
-                    height: 16,
-                  ),
+                  _buildJadwalCard(),
+                  SizedBox(height: 16),
                   Container(
                     margin: EdgeInsets.symmetric(horizontal: 24),
                     padding: EdgeInsets.only(bottom: 10),
@@ -1456,131 +1563,34 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
                       ],
                     ),
                   ),
-                  SizedBox(
-                    height: 16,
-                  ),
-                  Container(
-                    padding: EdgeInsets.symmetric(horizontal: 24),
-                    child: Text(
-                      'VIDEO EDUKASI : ',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                      ),
+                  SizedBox(height: 16),
+                  Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 24, vertical: 4),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 4,
+                          height: 20,
+                          decoration: BoxDecoration(
+                            color: PrimaryColor,
+                            borderRadius: BorderRadius.circular(2),
+                          ),
+                        ),
+                        SizedBox(width: 8),
+                        Text(
+                          'Video Edukasi',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black87,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
+                  SizedBox(height: 10),
                   _buildVideoSection(),
-                  SizedBox(
-                    height: 10,
-                  ),
-                  // Container(
-                  //   padding: EdgeInsets.symmetric(horizontal: 24),
-                  //   child: Text(
-                  //     'ARTIKEL TERBARU : ',
-                  //     style: TextStyle(
-                  //       fontSize: 20,
-                  //       fontWeight: FontWeight.bold,
-                  //     ),
-                  //   ),
-                  // ),
-                  // ListView.builder(
-                  //   shrinkWrap: true,
-                  //   physics: NeverScrollableScrollPhysics(),
-                  //   itemCount:
-                  //       articles.length, // Jumlah card yang ingin ditampilkan
-                  //   scrollDirection:
-                  //       Axis.vertical, // Untuk menggeser card ke samping
-                  //   itemBuilder: (BuildContext context, int index) {
-                  //     // Daftar warna gradient yang berbeda
-                  //     List<List<Color>> gradients = [
-                  //       [PrimaryColor, Colors.white],
-                  //       [SecondaryColor, Colors.white],
-                  //       [ThirdColor, Colors.white],
-                  //       [PrimaryColor, Colors.white],
-                  //       [SecondaryColor, Colors.white],
-                  //     ];
-
-                  //     return GestureDetector(
-                  //       onTap: () {
-                  //         Navigator.push(
-                  //           context,
-                  //           MaterialPageRoute(
-                  //             builder: (context) => BacaArtikel(
-                  //                 title: articles[index]['judul'],
-                  //                 description: articles[index]['konten'],
-                  //                 image: articles[index]['gambar_artikel']),
-                  //           ),
-                  //         );
-                  //       },
-                  //       child: Container(
-                  //           margin: EdgeInsets.symmetric(
-                  //               horizontal: 16, vertical: 16),
-                  //           width: 250, // Lebar card
-                  //           decoration: BoxDecoration(
-                  //             borderRadius: BorderRadius.circular(16.0),
-                  //             image: DecorationImage(
-                  //               image: NetworkImage(
-                  //                   articles[index]['gambar_artikel']),
-                  //               fit: BoxFit.cover,
-                  //             ),
-                  //             // boxShadow: [boxShadowPrimary],
-                  //           ),
-                  //           child: Container(
-                  //             padding: EdgeInsets.only(left: 8, right: 8),
-                  //             decoration: BoxDecoration(
-                  //               borderRadius: BorderRadius.circular(16.0),
-                  //               color: Colors.black.withOpacity(0.4),
-                  //               boxShadow: [boxShadow],
-                  //             ),
-                  //             child: Row(
-                  //               mainAxisAlignment: MainAxisAlignment.start,
-                  //               children: [
-                  //                 // Gambar dari asset
-                  //                 Expanded(
-                  //                   child: Column(
-                  //                     mainAxisAlignment:
-                  //                         MainAxisAlignment.center,
-                  //                     crossAxisAlignment:
-                  //                         CrossAxisAlignment.center,
-                  //                     children: [
-                  //                       Container(
-                  //                         alignment: Alignment.center,
-                  //                         child: Text(
-                  //                           articles[index][
-                  //                               'judul'], // Ganti dengan deskripsi yang sesuai
-                  //                           style: TextStyle(
-                  //                             color:
-                  //                                 TextColorLight, // Warna teks pada latar belakang gradient
-                  //                             fontSize: 16.0,
-                  //                             fontWeight: FontWeight.bold,
-                  //                           ),
-                  //                           textAlign: TextAlign.center,
-                  //                         ),
-                  //                       ),
-                  //                       // Tambahkan widget lainnya di sini jika diperlukan
-                  //                     ],
-                  //                   ),
-                  //                 ),
-                  //                 SizedBox(
-                  //                     width:
-                  //                         10), // Spasi antara gambar dan judul
-                  //                 Container(
-                  //                   width: 90, // Lebar gambar
-                  //                   height: 90, // Tinggi gambar
-                  //                   child: ClipRRect(
-                  //                     borderRadius: BorderRadius.circular(24),
-                  //                     child: Image.network(
-                  //                       articles[index]['gambar_artikel'],
-                  //                       fit: BoxFit.cover,
-                  //                     ),
-                  //                   ),
-                  //                 ),
-                  //               ],
-                  //             ),
-                  //           )),
-                  //     );
-                  //   },
-                  // ),
+                  SizedBox(height: 24),
                 ],
               ),
       ),

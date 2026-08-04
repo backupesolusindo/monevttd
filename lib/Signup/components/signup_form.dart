@@ -1,6 +1,5 @@
+// signup_form.dart
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart'; // Tambahkan import ini
-
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
@@ -9,7 +8,7 @@ import 'package:monitoringobat/util/colors.dart';
 import '../../components/constants.dart';
 import '../../Login/components/login_form.dart';
 import '../../util/core.dart';
-import 'package:email_validator/email_validator.dart';
+import 'sign_up_top_image.dart';
 
 class SignUpForm extends StatefulWidget {
   final String? Function(String?) validatePassword;
@@ -58,6 +57,7 @@ class _SignUpFormState extends State<SignUpForm> {
   String accessToken = "";
   TextEditingController confirmPasswordController = TextEditingController();
   bool _passwordMatch = true;
+
   Future<void> getToken() async {
     try {
       var response = await http.post(
@@ -163,23 +163,31 @@ class _SignUpFormState extends State<SignUpForm> {
     getToken();
   }
 
-  InputDecoration _buildInputDecoration(String hintText) {
+  // ==== STYLE: disamakan dengan _pillInputDecoration pada LoginForm ====
+  InputDecoration _buildInputDecoration(
+    String hintText, {
+    IconData? icon,
+    Widget? suffixIcon,
+  }) {
     return InputDecoration(
       hintText: hintText,
+      hintStyle: TextStyle(color: Colors.grey.shade500),
+      prefixIcon: icon != null ? Icon(icon, color: PrimaryColor) : null,
+      suffixIcon: suffixIcon,
       filled: true,
       fillColor: Colors.white,
-      contentPadding: EdgeInsets.symmetric(vertical: 10.0, horizontal: 20.0),
+      contentPadding: EdgeInsets.symmetric(vertical: 16, horizontal: 8),
       border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(15.0),
+        borderRadius: BorderRadius.circular(30),
         borderSide: BorderSide.none,
       ),
       enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(15.0),
-        borderSide: BorderSide(color: Colors.grey.shade200, width: 1.0),
+        borderRadius: BorderRadius.circular(30),
+        borderSide: BorderSide(color: Colors.grey.shade200, width: 1),
       ),
       focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(15.0),
-        borderSide: BorderSide(color: Colors.blue, width: 2.0),
+        borderRadius: BorderRadius.circular(30),
+        borderSide: BorderSide(color: PrimaryColor, width: 1.5),
       ),
     );
   }
@@ -191,9 +199,9 @@ class _SignUpFormState extends State<SignUpForm> {
         Text(
           'Jenis Kelamin',
           style: TextStyle(
-            color: Colors.white,
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
+            color: Colors.grey.shade700,
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
           ),
         ),
         Row(
@@ -201,7 +209,8 @@ class _SignUpFormState extends State<SignUpForm> {
             Expanded(
               flex: 4,
               child: RadioListTile<String>(
-                title: Text('Laki-laki', style: TextStyle(color: Colors.white)),
+                title: Text('Laki-laki',
+                    style: TextStyle(color: Colors.grey.shade800)),
                 value: 'Laki-Laki',
                 groupValue: selectedGender,
                 onChanged: (value) {
@@ -209,14 +218,15 @@ class _SignUpFormState extends State<SignUpForm> {
                     selectedGender = value!;
                   });
                 },
-                activeColor: Colors.white,
+                activeColor: PrimaryColor,
                 contentPadding: EdgeInsets.symmetric(horizontal: 0),
               ),
             ),
             Expanded(
               flex: 5,
               child: RadioListTile<String>(
-                title: Text('Perempuan', style: TextStyle(color: Colors.white)),
+                title: Text('Perempuan',
+                    style: TextStyle(color: Colors.grey.shade800)),
                 value: 'Perempuan',
                 groupValue: selectedGender,
                 onChanged: (value) {
@@ -224,7 +234,7 @@ class _SignUpFormState extends State<SignUpForm> {
                     selectedGender = value!;
                   });
                 },
-                activeColor: Colors.white,
+                activeColor: PrimaryColor,
                 contentPadding: EdgeInsets.symmetric(horizontal: 0),
               ),
             ),
@@ -236,366 +246,250 @@ class _SignUpFormState extends State<SignUpForm> {
 
   @override
   Widget build(BuildContext context) {
+    // ==== STYLE: kartu putih membulat, sama seperti MobileLoginScreen ====
     return Material(
       color: Colors.transparent,
-      child: SingleChildScrollView(
-        child: Padding(
-          padding: EdgeInsets.all(20.0),
-          child: Column(
-            children: [
-              SizedBox(height: 40.0),
-              SvgPicture.asset(
-                "assets/icons/user-pen.svg",
-                height: 100,
-                width: 100,
-                color: Colors.white, // Sesuaikan warna jika diperlukan
-              ),
-              SizedBox(height: 20.0),
-              Text(
-                'Isi Profil Anda',
-                style: TextStyle(
-                  fontSize: 24,
-                  fontFamily: 'Calibri',
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
-              ),
-              SizedBox(height: 30.0),
-              Row(
-                children: [
-                  Expanded(
-                    child: TextFormField(
-                      controller: namaController,
-                      decoration: _buildInputDecoration('Nama Lengkap'),
-                    ),
-                  ),
-                ],
-              ),
-              SizedBox(height: 10),
-              Row(
-                children: [
-                  Expanded(
-                    child: TextFormField(
-                      controller: usernameController,
-                      decoration: _buildInputDecoration('Username'),
-                    ),
-                  ),
-                  // Expanded(
-                  //   child: TextFormField(
-                  //     controller: namaController,
-                  //     decoration: InputDecoration(hintText: 'Username'),
-                  //   ),
-                  // )
-                ],
-              ),
-              SizedBox(height: 10),
-              Column(
-                children: [
-                  TextFormField(
-                    controller: passwordController,
-                    decoration: _buildInputDecoration('Password').copyWith(
-                      suffixIcon: IconButton(
-                        icon: Icon(
-                          _obscurePassword
-                              ? Icons.visibility
-                              : Icons.visibility_off,
-                        ),
-                        onPressed: () {
-                          setState(() {
-                            _obscurePassword = !_obscurePassword;
-                          });
-                        },
-                      ),
-                    ),
-                    obscureText:
-                        _obscurePassword, // Ini adalah kunci untuk mengubah tampilan teks
-                    validator: widget.validatePassword,
-                  ),
-                ],
-              ),
-              SizedBox(height: 10),
-              Column(
-                children: [
-                  TextFormField(
-                    controller: confirmPasswordController,
-                    decoration:
-                        _buildInputDecoration('Konfirmasi Password').copyWith(
-                      suffixIcon: IconButton(
-                        icon: Icon(
-                          _obscureConfirmPassword
-                              ? Icons.visibility
-                              : Icons.visibility_off,
-                        ),
-                        onPressed: () {
-                          setState(() {
-                            _obscureConfirmPassword = !_obscureConfirmPassword;
-                          });
-                        },
-                      ),
-                      errorText: _passwordMatch ? null : 'Password tidak cocok',
-                    ),
-                    obscureText:
-                        _obscureConfirmPassword, // Ini adalah kunci untuk mengubah tampilan teks
-                    onChanged: (value) {
-                      setState(() {
-                        _passwordMatch = value == passwordController.text;
-                      });
-                    },
-                  ),
-                ],
-              ),
-              SizedBox(height: 10),
-              _buildGenderSelection(),
-              SizedBox(height: 10),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.9),
+          borderRadius: BorderRadius.circular(32),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.08),
+              blurRadius: 24,
+              offset: Offset(0, 10),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const SignUpScreenTopImage(),
+            SizedBox(height: 16),
 
-              Row(
-                children: [
-                  Expanded(
-                    child: TextFormField(
-                      controller: emailController,
-                      decoration: _buildInputDecoration('Email'),
-                      validator: widget.validateEmail,
-                    ),
+            TextFormField(
+              controller: namaController,
+              cursorColor: PrimaryColor,
+              decoration: _buildInputDecoration('Nama Lengkap',
+                  icon: Icons.badge_outlined),
+            ),
+            SizedBox(height: 16),
+
+            TextFormField(
+              controller: usernameController,
+              cursorColor: PrimaryColor,
+              decoration: _buildInputDecoration('Username',
+                  icon: Icons.person_outline),
+            ),
+            SizedBox(height: 16),
+
+            TextFormField(
+              controller: passwordController,
+              cursorColor: PrimaryColor,
+              decoration: _buildInputDecoration(
+                'Password',
+                icon: Icons.lock_outline,
+                suffixIcon: IconButton(
+                  icon: Icon(
+                    _obscurePassword
+                        ? Icons.visibility_off
+                        : Icons.visibility,
+                    color: Colors.grey.shade600,
                   ),
-                  // SizedBox(width: 10),
-                  // Expanded(
-                  //   child: TextFormField(
-                  //     keyboardType: TextInputType.number,
-                  //     controller: noTelpController,
-                  //     decoration: _buildInputDecoration('No Telepon'),
-                  //   ),
-                  // ),
+                  onPressed: () {
+                    setState(() {
+                      _obscurePassword = !_obscurePassword;
+                    });
+                  },
+                ),
+              ),
+              obscureText: _obscurePassword,
+              validator: widget.validatePassword,
+            ),
+            SizedBox(height: 16),
+
+            TextFormField(
+              controller: confirmPasswordController,
+              cursorColor: PrimaryColor,
+              decoration: _buildInputDecoration(
+                'Konfirmasi Password',
+                icon: Icons.lock_outline,
+                suffixIcon: IconButton(
+                  icon: Icon(
+                    _obscureConfirmPassword
+                        ? Icons.visibility_off
+                        : Icons.visibility,
+                    color: Colors.grey.shade600,
+                  ),
+                  onPressed: () {
+                    setState(() {
+                      _obscureConfirmPassword = !_obscureConfirmPassword;
+                    });
+                  },
+                ),
+              ).copyWith(
+                errorText: _passwordMatch ? null : 'Password tidak cocok',
+              ),
+              obscureText: _obscureConfirmPassword,
+              onChanged: (value) {
+                setState(() {
+                  _passwordMatch = value == passwordController.text;
+                });
+              },
+            ),
+            SizedBox(height: 16),
+
+            _buildGenderSelection(),
+            SizedBox(height: 16),
+
+            TextFormField(
+              controller: emailController,
+              keyboardType: TextInputType.emailAddress,
+              cursorColor: PrimaryColor,
+              decoration: _buildInputDecoration('Email',
+                  icon: Icons.email_outlined),
+              validator: widget.validateEmail,
+            ),
+            SizedBox(height: 16),
+
+            TextFormField(
+              keyboardType: TextInputType.number,
+              controller: noTelpController,
+              cursorColor: PrimaryColor,
+              decoration: _buildInputDecoration('No Telepon',
+                  icon: Icons.phone_outlined),
+            ),
+            SizedBox(height: 16),
+
+            TextFormField(
+              controller: tanggalLahirController,
+              cursorColor: PrimaryColor,
+              decoration: _buildInputDecoration(
+                'Tanggal Lahir',
+                icon: Icons.cake_outlined,
+                suffixIcon:
+                    Icon(Icons.calendar_today, color: Colors.grey.shade600),
+              ),
+              onTap: () async {
+                final DateTime? pickedDate = await showDatePicker(
+                  context: context,
+                  initialDate: selectedDate,
+                  firstDate: DateTime(1900),
+                  lastDate: DateTime.now(),
+                );
+                if (pickedDate != null && pickedDate != selectedDate) {
+                  setState(() {
+                    selectedDate = pickedDate;
+                    tanggalLahirController.text =
+                        DateFormat('yyyy-MM-dd').format(selectedDate);
+                  });
+                }
+              },
+            ),
+            SizedBox(height: 16),
+
+            TextFormField(
+              controller: alamatController,
+              cursorColor: PrimaryColor,
+              decoration: _buildInputDecoration('Alamat',
+                  icon: Icons.home_outlined),
+            ),
+            SizedBox(height: 16),
+
+            Row(
+              children: [
+                Expanded(
+                  child: TextFormField(
+                    controller: tinggiBadanController,
+                    keyboardType: TextInputType.number,
+                    cursorColor: PrimaryColor,
+                    decoration: _buildInputDecoration('TB (cm)',
+                        icon: Icons.height),
+                  ),
+                ),
+                SizedBox(width: 12),
+                Expanded(
+                  child: TextFormField(
+                    controller: beratBadanController,
+                    keyboardType: TextInputType.number,
+                    cursorColor: PrimaryColor,
+                    decoration: _buildInputDecoration('BB (kg)',
+                        icon: Icons.monitor_weight_outlined),
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: 24),
+
+            // ==== STYLE: tombol gradient, sama seperti tombol Login ====
+            Container(
+              height: 54,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(30),
+                gradient: LinearGradient(
+                  colors: [
+                    PrimaryColor,
+                    PrimaryColor.withOpacity(0.7),
+                  ],
+                  begin: Alignment.centerLeft,
+                  end: Alignment.centerRight,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: PrimaryColor.withOpacity(0.35),
+                    blurRadius: 12,
+                    offset: Offset(0, 6),
+                  ),
                 ],
               ),
-              SizedBox(
-                height: 10,
-              ),
-              Row(
-                children: [
-                  Expanded(
-                    child: TextFormField(
-                      keyboardType: TextInputType.number,
-                      controller: noTelpController,
-                      decoration: _buildInputDecoration('No Telepon'),
-                    ),
+              child: ElevatedButton(
+                onPressed: () {
+                  registerUser();
+                },
+                style: ElevatedButton.styleFrom(
+                  foregroundColor: Colors.white,
+                  backgroundColor: Colors.transparent,
+                  shadowColor: Colors.transparent,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(30),
                   ),
-                ],
+                ),
+                child: Text(
+                  "SIMPAN",
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
               ),
-              SizedBox(height: 10),
-              // Row(
-              //   children: [
-              //     Expanded(
-              //       child: TextFormField(
-              //         keyboardType: TextInputType.number,
-              //         controller: tinggiBadanController,
-              //         decoration: InputDecoration(hintText: 'Tinggi (cm)'),
-              //       ),
-              //     ),
-              //     SizedBox(width: 10),
-              //     Expanded(
-              //       child: TextFormField(
-              //         keyboardType: TextInputType.number,
-              //         controller: beratBadanController,
-              //         decoration: InputDecoration(hintText: 'Berat (kg)'),
-              //       ),
-              //     ),
-              //   ],
-              // ),
-              // SizedBox(height: 10),
-              // Row(
-              //   children: [
-              //     Expanded(
-              //       child: InputDecorator(
-              //         decoration: _buildInputDecoration('Jenis Kelamin'),
-              //         child: DropdownButtonHideUnderline(
-              //           child: DropdownButton<String>(
-              //             value: selectedGender,
-              //             onChanged: (value) {
-              //               setState(() {
-              //                 selectedGender = value!;
-              //               });
-              //             },
-              //             items: ['Perempuan', 'Laki-Laki'].map((String value) {
-              //               return DropdownMenuItem<String>(
-              //                 value: value,
-              //                 child: Text(value),
-              //               );
-              //             }).toList(),
-              //           ),
-              //         ),
-              //       ),
-              //     ),
-              //     SizedBox(width: 10),
-              //     // Expanded(
-              //     //   child: TextFormField(
-              //     //     controller: tanggalLahirController,
-              //     //     decoration: _buildInputDecoration('Tanggal Lahir').copyWith(
-              //     //       suffixIcon: Icon(Icons.calendar_today),
-              //     //     ),
-              //     //     onTap: () async {
-              //     //       final DateTime? pickedDate = await showDatePicker(
-              //     //         context: context,
-              //     //         initialDate: selectedDate,
-              //     //         firstDate: DateTime(1900),
-              //     //         lastDate: DateTime.now(),
-              //     //       );
-              //     //       if (pickedDate != null &&
-              //     //           pickedDate != selectedDate) {
-              //     //         setState(() {
-              //     //           selectedDate = pickedDate;
-              //     //           tanggalLahirController.text =
-              //     //               DateFormat('yyyy-MM-dd')
-              //     //                   .format(selectedDate);
-              //     //         });
-              //     //       }
-              //     //     },
-              //     //   ),
-              //     // ),
-              //   ],
-              // ),
-              // SizedBox(height: 10),
-              Row(
+            ),
+            SizedBox(height: 16),
+
+            // ==== STYLE: link bawah, sama seperti "Belum punya akun?" ====
+            Center(
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Expanded(
-                    child: TextFormField(
-                      controller: tanggalLahirController,
-                      decoration:
-                          _buildInputDecoration('Tanggal Lahir').copyWith(
-                        suffixIcon: Icon(Icons.calendar_today),
+                  Text(
+                    "Sudah punya akun? ",
+                    style:
+                        TextStyle(color: Colors.grey.shade700, fontSize: 14),
+                  ),
+                  GestureDetector(
+                    onTap: () {
+                      Navigator.pop(context);
+                    },
+                    child: Text(
+                      "Login di sini",
+                      style: TextStyle(
+                        color: PrimaryColor,
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
                       ),
-                      onTap: () async {
-                        final DateTime? pickedDate = await showDatePicker(
-                          context: context,
-                          initialDate: selectedDate,
-                          firstDate: DateTime(1900),
-                          lastDate: DateTime.now(),
-                        );
-                        if (pickedDate != null && pickedDate != selectedDate) {
-                          setState(() {
-                            selectedDate = pickedDate;
-                            tanggalLahirController.text =
-                                DateFormat('yyyy-MM-dd').format(selectedDate);
-                          });
-                        }
-                      },
-                    ),
-                  ),
-                  // ),
-                ],
-              ),
-              SizedBox(height: 10),
-              // Row(
-              //   children: [
-              //     Expanded(
-              //       child: TextFormField(
-              //         controller: umurController,
-              //         keyboardType: TextInputType.number,
-              //         decoration: InputDecoration(hintText: 'Umur'),
-              //       ),
-              //     ),
-              //   ],
-              // ),
-              // SizedBox(height: 10),
-              Row(
-                children: [
-                  Expanded(
-                    child: TextFormField(
-                      controller: alamatController,
-                      decoration: _buildInputDecoration('Alamat'),
-                    ),
-                  ),
-                  SizedBox(width: 10),
-                  // Expanded(
-                  //   child: TextFormField(
-                  //     controller: kecamatanController,
-                  //     decoration: InputDecoration(hintText: 'Kecamatan'),
-                  //   ),
-                  // ),
-                ],
-              ),
-              SizedBox(height: 10),
-              Row(
-                children: [
-                  Expanded(
-                    child: TextFormField(
-                      controller: tinggiBadanController,
-                      keyboardType: TextInputType.number,
-                      decoration: _buildInputDecoration('TB (cm)'),
-                    ),
-                  ),
-                  SizedBox(width: 10),
-                  Expanded(
-                    child: TextFormField(
-                      controller: beratBadanController,
-                      keyboardType: TextInputType.number,
-                      decoration: _buildInputDecoration('BB (kg)'),
                     ),
                   ),
                 ],
               ),
-              SizedBox(height: 10),
-              // Row(
-              //   children: [
-              //     Expanded(
-              //       child: TextFormField(
-              //         controller: kabupatenController,
-              //         decoration: InputDecoration(hintText: 'Kabupaten'),
-              //       ),
-              //     ),
-              //     SizedBox(width: 10),
-              //     Expanded(
-              //       child: TextFormField(
-              //         controller: provinsiController,
-              //         decoration: InputDecoration(hintText: 'Provinsi'),
-              //       ),
-              //     ),
-              //   ],
-              // ),
-              SizedBox(
-                height: 10,
-              ),
-              Center(
-                child: TextButton(
-                  onPressed: () {
-                    registerUser();
-                  },
-                  style: TextButton.styleFrom(
-                    backgroundColor: WhiteColor,
-                    padding: EdgeInsets.symmetric(
-                      horizontal: 100,
-                      vertical: defaultPadding,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                  child: Text(
-                    "SIMPAN",
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: PrimaryColor,
-                    ),
-                  ),
-                ),
-              ),
-              SizedBox(height: 10.0),
-              Padding(
-                padding: const EdgeInsets.only(bottom: 5.0),
-                child: TextButton(
-                  onPressed: () {
-                    Navigator.pop(context);
-                  },
-                  child: Text(
-                    'Sudah punya akun? Login di sini',
-                    style: TextStyle(
-                      color: Colors.white,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

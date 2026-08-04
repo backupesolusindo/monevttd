@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:monitoringobat/components/constants.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'package:monitoringobat/util/colors.dart';
 
 class LoginScreenTopImage extends StatelessWidget {
@@ -12,40 +11,53 @@ class LoginScreenTopImage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        SizedBox(height: defaultPadding * 2),
-        Center(
-          child: Container(
-            width: 160,
-            height: 160,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(100),
-              boxShadow: [
-                BoxShadow(
-                  offset: Offset(0, 8),
-                  blurRadius: 10,
-                  color: WhiteColor.withOpacity(0.23),
-                ),
-              ],
+        SizedBox(height: defaultPadding),
+        // Logo bulat
+        Container(
+          width: 130,
+          height: 130,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(100),
+            boxShadow: [
+              BoxShadow(
+                offset: Offset(0, 8),
+                blurRadius: 16,
+                color: PrimaryColor.withOpacity(0.15),
+              ),
+            ],
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Image.asset(
+              "assets/images/logomonevTTDbaru.png",
+              fit: BoxFit.contain,
             ),
-            child: Column(children: [
-              SizedBox(height: 25),
-              Image.asset("assets/images/logomonevTTDbaru.png", width: 100, height: 100),
-              SizedBox(height: 10),
-              // Text("MONEV TTD",
-              //     style: TextStyle(
-              //         color: PrimaryColor,
-              //         fontSize: 16,
-              //         fontWeight: FontWeight.bold)),
-            ]),
           ),
         ),
         SizedBox(height: defaultPadding),
+
+        // Nama aplikasi
         Text(
-          "LOGIN USER",
-          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white),
+          "MONEV TTD",
+          style: TextStyle(
+            fontSize: 28,
+            fontWeight: FontWeight.w900,
+            color: PrimaryColor,
+          ),
         ),
-        SizedBox(height: defaultPadding * 4),
+        SizedBox(height: 6),
+
+        // Subtitle
+        Text(
+          "Selalu tepat waktu minum obat.",
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: 14,
+            color: Colors.grey.shade600,
+          ),
+        ),
+        SizedBox(height: defaultPadding * 2),
       ],
     );
   }

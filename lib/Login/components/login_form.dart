@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:monitoringobat/Signup/signup_screen.dart';
-import 'package:monitoringobat/components/already_have_an_account_acheck.dart';
 import 'package:monitoringobat/components/constants.dart';
 import 'package:monitoringobat/dashboard/dashboard.dart';
 import 'package:monitoringobat/lupaPassword/lupaPassword.dart';
@@ -28,14 +27,15 @@ class LoginForm extends StatefulWidget {
 class _LoginFormState extends State<LoginForm> {
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-  bool _obscureText = true; // Untuk mengontrol visibilitas password
-
+  bool _obscureText = true;
+  bool _isLoading = false;
   String clientId = "PKL2023";
   String clientSecret = "PKLSERU";
   String tokenUrl = base_url + "api/Token/token";
 
   String accessToken = "";
   late UserData userData;
+
   Future<void> getToken() async {
     try {
       var response = await http.post(
@@ -62,42 +62,40 @@ class _LoginFormState extends State<LoginForm> {
     }
   }
 
-  Future<void> _login() async {
-    final String username = _usernameController.text;
-    final String password = _passwordController.text;
+Future<void> _login() async {
+  setState(() {
+    _isLoading = true; 
+  });
 
-    await getToken(); // Memanggil fungsi getToken untuk mendapatkan token OAuth2
+  final String username = _usernameController.text;
+  final String password = _passwordController.text;
 
-    // Membuat request body
-    final Map<String, String> data = {
-      "username": username,
-      "password": password,
-    };
+  await getToken();
 
-    // Mengirim permintaan HTTP POST ke API dengan menyertakan token
+  final Map<String, String> data = {
+    "username": username,
+    "password": password,
+  };
+
+  try {
     final response = await http.post(
       Uri.parse(base_url + 'api/Login/Login'),
       headers: {
-        'Authorization':
-            'Bearer $accessToken', // Menyertakan token dalam header
+        'Authorization': 'Bearer $accessToken',
       },
       body: data,
     );
 
     if (response.statusCode == 200) {
       final responseData = json.decode(response.body);
-
-      // Simpan data pengguna ke SharedPreferences
-
       print(responseData);
       final prefs = await SharedPreferences.getInstance();
       prefs.setString('access_token', accessToken);
-      // Simpan data pengguna lainnya jika diperlukan
+
       if (responseData['response'] != null) {
         userData = UserData.fromJson(responseData['response']);
         prefs.setString('user_data', json.encode(userData.toJson()));
 
-        // Sync semua alarm jadwal minum obat dari API setelah login berhasil
         await AlarmService.syncAlarmsFromApi();
 
         if (!mounted) return;
@@ -106,6 +104,7 @@ class _LoginFormState extends State<LoginForm> {
             MaterialPageRoute(
               builder: (context) => Dashboard(),
             ));
+        return;
       } else {
         final errorMessage =
             responseData['message']['message'] ?? 'Terjadi kesalahan';
@@ -134,15 +133,22 @@ class _LoginFormState extends State<LoginForm> {
         print('Pesan kesalahan: ${response.body}');
       }
     }
+  } catch (e) {
+    print('Terjadi kesalahan: $e');
+  } finally {
+    if (mounted) {
+      setState(() {
+        _isLoading = false; 
+      });
+    }
   }
+}
 
   @override
   void initState() {
     super.initState();
-    // Ambil token saat halaman login dimuat
     getToken();
 
-    // Periksa apakah token akses sudah ada
     checkUserSession();
   }
 
@@ -151,7 +157,6 @@ class _LoginFormState extends State<LoginForm> {
     final savedAccessToken = prefs.getString('access_token');
 
     if (savedAccessToken != null) {
-      // Sync alarm untuk user yang sudah login sebelumnya
       await AlarmService.syncAlarmsFromApi();
 
       if (!mounted) return;
@@ -159,71 +164,69 @@ class _LoginFormState extends State<LoginForm> {
         context,
         MaterialPageRoute(builder: (context) => Dashboard()),
       );
-      // Token akses sudah ada, mungkin pengguna sudah masuk
-      // Anda dapat memeriksa validitas token di sini
-      // Misalnya, jika token kedaluwarsa, Anda dapat mengarahkan pengguna untuk logout
-      // atau memperbarui token.
     }
+  }
+
+  InputDecoration _pillInputDecoration({
+    required String hint,
+    required IconData icon,
+    Widget? suffixIcon,
+  }) {
+    return InputDecoration(
+      hintText: hint,
+      hintStyle: TextStyle(color: Colors.grey.shade500),
+      prefixIcon: Icon(icon, color: PrimaryColor),
+      suffixIcon: suffixIcon,
+      filled: true,
+      fillColor: Colors.white,
+      contentPadding: EdgeInsets.symmetric(vertical: 16, horizontal: 8),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(30),
+        borderSide: BorderSide.none,
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(30),
+        borderSide: BorderSide(color: Colors.grey.shade200, width: 1),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(30),
+        borderSide: BorderSide(color: PrimaryColor, width: 1.5),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Form(
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          SizedBox(height: 80),
-          // Card(
-          //   elevation: 2,
-          //   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-          //   child:
+                    SizedBox(height: 16),
+
           TextFormField(
             controller: _usernameController,
             keyboardType: TextInputType.emailAddress,
             textInputAction: TextInputAction.next,
             cursorColor: PrimaryColor,
-            decoration: InputDecoration(
-              hintText: "Username",
-              prefixIcon: Padding(
-                padding: const EdgeInsets.all(defaultPadding),
-                child: Icon(Icons.person, color: PrimaryColor),
-              ),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-                borderSide: BorderSide(color: PrimaryColor, width: 1.5),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-                borderSide: BorderSide(color: PrimaryColor, width: 1.5),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-                borderSide: BorderSide(color: PrimaryColor, width: 2),
-              ),
-              filled: true,
-              fillColor: Colors.white,
+            decoration: _pillInputDecoration(
+              hint: "Masukkan username",
+              icon: Icons.email_outlined,
             ),
           ),
-          // ),
           SizedBox(height: 16),
-          // Card(
-          //   elevation: 2,
-          //   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-          //   child:
+
           TextFormField(
             controller: _passwordController,
             textInputAction: TextInputAction.done,
             obscureText: _obscureText,
             cursorColor: PrimaryColor,
-            decoration: InputDecoration(
-              hintText: "Password",
-              prefixIcon: Padding(
-                padding: const EdgeInsets.all(defaultPadding),
-                child: Icon(Icons.lock, color: PrimaryColor),
-              ),
+            decoration: _pillInputDecoration(
+              hint: "Masukkan password",
+              icon: Icons.lock_outline,
               suffixIcon: IconButton(
                 icon: Icon(
-                  _obscureText ? Icons.visibility : Icons.visibility_off,
-                  color: PrimaryColor,
+                  _obscureText ? Icons.visibility_off : Icons.visibility,
+                  color: Colors.grey.shade600,
                 ),
                 onPressed: () {
                   setState(() {
@@ -231,75 +234,120 @@ class _LoginFormState extends State<LoginForm> {
                   });
                 },
               ),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-                borderSide: BorderSide(color: PrimaryColor, width: 1.5),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-                borderSide: BorderSide(color: PrimaryColor, width: 1.5),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-                borderSide: BorderSide(color: PrimaryColor, width: 2),
-              ),
-              filled: true,
-              fillColor: Colors.white,
             ),
           ),
-          // ),
-          SizedBox(height: 32),
-          ElevatedButton(
-            onPressed: _login,
-            style: ElevatedButton.styleFrom(
-              foregroundColor: Colors.white,
-              backgroundColor: PrimaryColor,
-              padding: EdgeInsets.symmetric(horizontal: 50, vertical: 15),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
+          SizedBox(height: 12),
+
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => Lupa(),
+                  ),
+                );
+              },
+              style: TextButton.styleFrom(
+                padding: EdgeInsets.zero,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
               ),
-            ),
-            child: Text(
-              "Login".toUpperCase(),
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-            ),
-          ),
-          const SizedBox(height: defaultPadding),
-          TextButton(
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => Lupa(),
+              child: Text(
+                'Lupa Password?',
+                style: TextStyle(
+                  color: PrimaryColor,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
                 ),
-              );
-            },
-            style: TextButton.styleFrom(
-              padding: EdgeInsets.zero,
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-            ),
-            child: Text(
-              'Lupa Password',
-              style: TextStyle(
-                color: PrimaryColor,
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
               ),
             ),
           ),
-          const SizedBox(height: smallPadding),
-          AlreadyHaveAnAccountCheck(
-            press: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) {
-                    return SignUpScreen();
+          SizedBox(height: 24),
+
+         // Login button (gradient)
+Container(
+  height: 54,
+  decoration: BoxDecoration(
+    borderRadius: BorderRadius.circular(30),
+    gradient: LinearGradient(
+      colors: [
+        PrimaryColor,
+        PrimaryColor.withOpacity(0.7),
+      ],
+      begin: Alignment.centerLeft,
+      end: Alignment.centerRight,
+    ),
+    boxShadow: [
+      BoxShadow(
+        color: PrimaryColor.withOpacity(0.35),
+        blurRadius: 12,
+        offset: Offset(0, 6),
+      ),
+    ],
+  ),
+  child: ElevatedButton(
+    onPressed: _isLoading ? null : _login, // <-- cegah klik ganda saat loading
+    style: ElevatedButton.styleFrom(
+      foregroundColor: Colors.white,
+      backgroundColor: Colors.transparent,
+      shadowColor: Colors.transparent,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(30),
+      ),
+    ),
+    child: _isLoading
+        ? SizedBox(
+            height: 22,
+            width: 22,
+            child: CircularProgressIndicator(
+              strokeWidth: 2.5,
+              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+            ),
+          )
+        : Text(
+            "Login",
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          ),
+  ),
+),
+          SizedBox(height: 24),
+
+          Center(
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  "Belum punya akun? ",
+                  style: TextStyle(color: Colors.grey.shade700, fontSize: 14),
+                ),
+                GestureDetector(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) {
+                          return SignUpScreen();
+                        },
+                      ),
+                    );
                   },
+                  child: Text(
+                    "Daftar Sekarang",
+                    style: TextStyle(
+                      color: PrimaryColor,
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                 ),
-              );
-            },
+              ],
+            ),
           ),
+          SizedBox(height: 20),
+
+          // Terms
+          
         ],
       ),
     );

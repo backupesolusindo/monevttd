@@ -51,36 +51,41 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Background(
-      child: isLoading ? LoadingWidget() : Container(
-        height: MediaQuery.of(context).size.height,
-        child: SingleChildScrollView(
-          child: Responsive(
-            mobile: const MobileLoginScreen(),
-            desktop: Row(
-              children: [
-                const Expanded(
-                  child: LoginScreenTopImage(),
-                ),
-                Expanded(
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: const [
-                      SizedBox(
-                        width: 450,
-                        child: LoginForm(),
+      child: isLoading
+          ? LoadingWidget()
+          : Container(
+              height: MediaQuery.of(context).size.height,
+              child: SingleChildScrollView(
+                child: Responsive(
+                  mobile: const MobileLoginScreen(),
+                  desktop: Row(
+                    children: [
+                      const Expanded(
+                        child: LoginScreenTopImage(),
+                      ),
+                      Expanded(
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: const [
+                            SizedBox(
+                              width: 450,
+                              child: LoginForm(),
+                            ),
+                          ],
+                        ),
                       ),
                     ],
                   ),
                 ),
-              ],
+              ),
+              decoration: BoxDecoration(
+                image: DecorationImage(
+                  image: AssetImage("assets/images/bgmonevminumobatbaru.png"),
+                  fit: BoxFit.cover,
+                ),
+              ),
             ),
-          ),
-        ),
-        decoration: BoxDecoration(
-          image: DecorationImage(
-            image: AssetImage("assets/images/bgmonevminumobatbaru.png"),
-            fit: BoxFit.cover,
-          ))));
+    );
   }
 }
 
@@ -91,21 +96,34 @@ class MobileLoginScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: <Widget>[
-        const LoginScreenTopImage(),
-        Row(
-          children: const [
-            Spacer(),
-            Expanded(
-              flex: 8,
-              child: LoginForm(),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 40),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: <Widget>[
+          // Kartu putih membulat, seperti pada referensi desain
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.9),
+              borderRadius: BorderRadius.circular(32),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.08),
+                  blurRadius: 24,
+                  offset: Offset(0, 10),
+                ),
+              ],
             ),
-            Spacer(),
-          ],
-        ),
-      ],
+            child: Column(
+              children: const [
+                LoginScreenTopImage(),
+                LoginForm(),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
